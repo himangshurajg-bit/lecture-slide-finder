@@ -27,6 +27,7 @@ jobs:
         uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
         with:
           log-accepted-android-sdk-licenses: false
+          packages: platform-tools
       - name: Install required SDK toolchain
         run: |
           yes | sdkmanager --licenses >/dev/null || true
@@ -36,6 +37,8 @@ jobs:
           ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.2.12479018
           LECTURE_SIGNING_DIR: ${{ runner.temp }}/lecture-ci-signing
         run: |
+          mkdir -p android/runtime/ci-evidence
+          trap 'cp /tmp/candidate-build.log android/runtime/ci-evidence/ 2>/dev/null || true' EXIT
           pnpm install --frozen-lockfile
           bash android/build-test-apk.sh > /tmp/candidate-build.log 2>&1
           CHECK_BUILD_ONLY=1 CHECK_FIXTURES=android/ci/fixtures bash android/tests/run.sh
