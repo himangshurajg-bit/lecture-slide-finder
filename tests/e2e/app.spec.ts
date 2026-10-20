@@ -41,3 +41,48 @@ test('changing transcript or video asks before discarding notes',async({page})=>
  page.once('dialog',dialog=>dialog.dismiss());await page.locator('#video-file').setInputFiles(fixture);await expect(page.locator('#notes-count')).toHaveText('1');
  page.once('dialog',dialog=>dialog.accept());await page.locator('#video-file').setInputFiles(fixture);await expect(page.locator('#notes-count')).toHaveText('0');await expect(page.getByRole('searchbox')).toBeDisabled();await expect(page.locator('.cue')).toHaveCount(0);
 });
+
+test('light liquid glass has bounded tap feedback and readable keyboard focus',async({page})=>{
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.goto('/');
+ expect(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme)).toBe('light');
+ const glass=await page.locator('.glass').first().evaluate(el=>({background:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow}));
+ expect(glass.background).toContain('linear-gradient');expect(glass.shadow).toContain('inset');
+ const sample=page.getByRole('button',{name:'Try a sample'});
+ await sample.dispatchEvent('pointerdown',{button:0,clientX:20,clientY:20});
+ await expect(sample.locator('.water-ripple')).toHaveCount(1);
+ await sample.dispatchEvent('pointerdown',{button:0,clientX:25,clientY:20});
+ await expect(sample.locator('.water-ripple')).toHaveCount(1);
+ await expect(sample.locator('.water-ripple')).toHaveCount(0,{timeout:2000});
+ await sample.focus();
+ await expect(sample).toBeFocused();
+ await page.keyboard.press('Enter');await expect(page.locator('.cue')).toHaveCount(3);
+ await page.keyboard.press('/');await expect(page.getByRole('searchbox')).toBeFocused();
+ const outline=await page.locator('.search-box').evaluate(el=>getComputedStyle(el).outlineStyle);
+ expect(outline).toBe('solid');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('reduced motion disables fluid animations and tap rings without blocking actions',async({page})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
+ const sample=page.getByRole('button',{name:'Try a sample'});
+ await sample.dispatchEvent('pointerdown',{button:0,clientX:20,clientY:20});
+ await expect(page.locator('.water-ripple')).toHaveCount(0);
+ for(const selector of ['.glass','#demo']){
+   const motion=await page.locator(selector).first().evaluate(el=>({animation:getComputedStyle(el).animationName,transition:getComputedStyle(el).transitionDuration}));
+   expect(motion.animation).toBe('none');expect(motion.transition).toBe('0s');
+ }
+ await sample.click();await expect(page.locator('.cue')).toHaveCount(3);
+ await page.getByRole('button',{name:'Save note at 00:00'}).click();await expect(page.locator('#notes-count')).toHaveText('1');
+ expect(await page.locator('#notes p').evaluate(el=>getComputedStyle(el).animationName)).toBe('none');
+});
+
+test('small Android-sized viewport keeps controls reachable without horizontal scrolling',async({page})=>{
+ await page.setViewportSize({width:320,height:740});await page.goto('/');
+ await page.getByRole('button',{name:'Try a sample'}).click();
+ await page.getByRole('button',{name:'Save note at 00:00'}).click();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ const exportButton=page.getByRole('button',{name:'Export notes'});await exportButton.scrollIntoViewIfNeeded();
+ await expect(exportButton).toBeInViewport();
+ expect((await exportButton.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+});

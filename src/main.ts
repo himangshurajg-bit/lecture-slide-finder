@@ -71,3 +71,24 @@ if('serviceWorker'in navigator)window.addEventListener('load',()=>{navigator.ser
 let installPrompt: (Event & {prompt:()=>Promise<void>})|null=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e as typeof installPrompt;$('#install').hidden=false;});
 $('#install').addEventListener('click',async()=>{await installPrompt?.prompt();installPrompt=null;$('#install').hidden=true;});
+
+// A brief, bounded water ring on deliberate taps. No background animation or media access.
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+document.addEventListener('pointerdown', event => {
+  if (reducedMotion.matches || event.button !== 0 || !(event.target instanceof Element)) return;
+  const button = event.target.closest<HTMLButtonElement>('button, .button');
+  if (!button || button.disabled) return;
+  button.querySelector('.water-ripple')?.remove();
+  const bounds = button.getBoundingClientRect();
+  const ring = document.createElement('span');
+  ring.className = 'water-ripple';
+  ring.setAttribute('aria-hidden', 'true');
+  ring.style.left = `${event.clientX - bounds.left}px`;
+  ring.style.top = `${event.clientY - bounds.top}px`;
+  button.append(ring);
+  ring.addEventListener('animationend', () => ring.remove(), {once: true});
+  window.setTimeout(() => ring.remove(), 800);
+});
+reducedMotion.addEventListener('change', () => {
+  if (reducedMotion.matches) document.querySelectorAll('.water-ripple').forEach(ring => ring.remove());
+});

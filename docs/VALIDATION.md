@@ -27,3 +27,26 @@ This is measured first-version validation, not a guarantee for all devices or me
 - No automatic slide recognition, OCR, semantic search, model accuracy benchmark, speaker detection or exhaustive format compatibility.
 - No deployed live URL. Static deployment/account settings were not changed.
 - GitHub-hosted workflow results, if present, are separate from the local checks above; adding a workflow is not a passing remote run.
+
+## Light liquid-glass refinement — 20 October 2026
+
+- Replaced the dark treatment with light translucent surfaces, soft mint/blue lighting,
+  curved inset highlights and a still water-droplet accent. This is a CSS depth
+  treatment, not physical optical refraction.
+- Added bounded 650 ms tap rings and short transform/opacity transitions; no continuous
+  animation, WebGL, animation library or extra dependency. At most one ring per
+  control, cleaned up after animation or 800 ms; Reduce motion skips/removes rings
+  and disables all CSS animations/transitions.
+- `pnpm build`: passed TypeScript and Vite production build.
+- `pnpm test`: all **34 unit tests** passed.
+- `python -m unittest discover -s tests -p '*_test.py' -v`: all **4 CLI tests** passed.
+- `pnpm test:e2e`: all **14 browser tests** passed across desktop Chromium and
+  Pixel 7 emulation. Existing import/search/seek/frame/export, invalid-input,
+  hostile-text, offline and note-loss checks remain passing. New checks cover
+  light surfaces, bounded repeated tap rings, keyboard search/focus, reduced-motion
+  behavior, and reachable controls/no horizontal overflow at 320 CSS pixels.
+- Visually inspected new desktop and Android-emulated full-page screenshots.
+  The droplet and panel highlights are still effects; fluid motion was exercised
+  by browser interactions. Screenshots alone cannot demonstrate animation.
+- No physical Android testing, APK, deployment, new speech-model validation,
+  licensing choice or changes to transcript/media handling in this refinement.

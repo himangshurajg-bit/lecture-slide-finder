@@ -105,3 +105,12 @@ See [docs/VALIDATION.md](docs/VALIDATION.md) for the measured validation and lim
 - `tests/`: unit cases and browser integration checks.
 
 Original implementation and fixture artwork. Dependency credits/license metadata are in [THIRD_PARTY.md](THIRD_PARTY.md); no competitor source or private media was copied. No project-wide open-source license has been selected by the owner yet. A public GitHub repository alone is not an open-source license grant.
+
+## Light liquid-glass interface
+
+The interface uses a light pearl/mint background, translucent panels, rounded rim
+highlights and a still droplet accent. Brief tap rings and eased control/panel
+transitions add fluidity without continuous animation, canvas effects or new UI
+dependencies. System **Reduce motion** disables these animations and tap rings.
+Mobile uses a smaller backdrop blur. These are CSS depth effects, not physical
+refraction. Android evidence remains Chromium emulation, not a real-phone test.
