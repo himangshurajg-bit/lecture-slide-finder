@@ -7,7 +7,7 @@ permissions:
 jobs:
   native-api36:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -57,7 +57,7 @@ jobs:
           disable-linux-hw-accel: false
           emulator-boot-timeout: 240
           emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -accel on -cores 2 -skin 720x1280
-          script: python3 android/ci/run-api36.py --hindi-only
+          script: python3 android/ci/run-api36.py
       - name: Retain host resource evidence after runtime
         if: always()
         run: |

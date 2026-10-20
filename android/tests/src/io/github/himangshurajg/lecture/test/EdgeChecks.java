@@ -16,6 +16,13 @@ public final class EdgeChecks extends RuntimeChecks {
  }
  @Override public void onStart(){Bundle result=new Bundle();try{
  connect();js("localStorage.clear();location.reload()");Thread.sleep(2000);await("!!document.querySelector('#demo')","edge clean launch");
+ // Exercise long-transcript navigation on the installed WebView, using a persisted fixture.
+ js("localStorage.setItem('lecture-session-v1',JSON.stringify({version:1,cues:Array.from({length:302},(_,i)=>({start:i,end:i+1,text:'Passage '+(i+1)+' force motion'})),selected:[],fileName:'long.json',query:''}));location.reload()");Thread.sleep(2000);
+ await("document.querySelectorAll('.cue').length===150 && document.querySelector('#result-summary').textContent.includes('302 passages')","long transcript restored with bounded page");
+ tapWeb("#results-next");check("document.querySelector('#result-page').textContent==='Page 2 of 3' && document.querySelector('.cue p').textContent==='Passage 151 force motion'","second transcript page reachable");
+ tapWeb("#results-next");check("document.querySelectorAll('.cue').length===2 && document.querySelector('#results-next').disabled","last transcript page reachable");
+ js("document.querySelectorAll('.save')[1].click();const q=document.querySelector('#query');q.value='302';q.dispatchEvent(new Event('input'))");check("document.querySelectorAll('.cue').length===1 && document.querySelector('#notes').textContent.includes('Passage 302')","late passage search and note preserved");
+ js("localStorage.clear();location.reload()");Thread.sleep(2000);await("!!document.querySelector('#demo')","paging fixture cleared");
  js("document.querySelector('#demo').click();document.querySelector('.save').click()");check("document.querySelector('#notes-count').textContent==='1'","edge note seeded");
  if(!"cancel".equals(segment)){runOnMainSync(()->activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));Thread.sleep(3000);await("innerWidth>innerHeight && document.querySelector('#notes-count').textContent==='1'","landscape preserves notes");
  runOnMainSync(()->activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));Thread.sleep(3000);await("innerHeight>innerWidth && document.querySelector('#notes-count').textContent==='1'","portrait preserves notes");}

@@ -313,3 +313,5 @@ select:focus-visible { outline:2px solid #216b73;outline-offset:3px; }
 #ocr-state, #gallery-state { overflow-wrap:anywhere;line-height:1.6; }
 @media (max-width:480px){ .frame-study .actions button {flex:1 1 140px;} }
 #exact-frame {max-width:min(94vw,1000px);max-height:94vh;padding:1rem;background:#eaf5f3;border:1px solid white;border-radius:28px;overflow:auto;color:#143537;}#exact-frame::backdrop{background:#102f30aa;backdrop-filter:blur(12px)}#exact-image{display:block;max-width:100%;max-height:65vh;margin:1rem auto;border-radius:14px}
+
+.result-pages{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}.result-pages[hidden]{display:none}.result-pages span{font-size:.8rem;color:var(--muted)}

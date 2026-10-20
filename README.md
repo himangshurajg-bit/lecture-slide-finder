@@ -73,7 +73,7 @@ JSON may be an array or `{ "segments": [...] }`; times are seconds:
 
 SRT uses `HH:MM:SS,mmm`; VTT supports `MM:SS.mmm` or `HH:MM:SS.mmm`. Cue identifiers/settings and simple subtitle markup are supported. Blank-line-separated cue blocks are required. Full WebVTT rendering/styling, subtitle overlays and speaker diarization are not implemented.
 
-Imports are limited to 5 MiB and 20,000 nonempty segments; time ranges must be finite, increasing within each cue and no longer than seven days. Results render the first 150 matches; narrow the query for longer transcripts. Import errors preserve the previous transcript.
+Imports are limited to 5 MiB and 20,000 nonempty segments; time ranges must be finite, increasing within each cue and no longer than seven days. Results use 150-passage pages with Previous/Next controls and exact match/page counts, so later matches remain reachable without rendering an entire long transcript. Changing the query or transcript returns to the first page; saved notes stay selected across pages. Import errors preserve the previous transcript.
 
 ## Privacy and safety
 
