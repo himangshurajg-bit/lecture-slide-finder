@@ -36,11 +36,21 @@ class AndroidBoundaryTests(unittest.TestCase):
             self.assertTrue(source.is_file(), name+' missing from clean checkout')
         build=(ROOT/'android/tests/run.sh').read_text()
         self.assertIn('rm -rf "$OUT/classes" "$OUT/dex"',build)
-    def test_native_taps_account_for_webview_insets(self):
+    def test_native_taps_map_visual_viewport_at_actual_page_scale(self):
         source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/RuntimeChecks.java').read_text()
-        self.assertIn('web.getPaddingLeft()+(float)a.getDouble(0)*scale',source)
-        self.assertIn('web.getPaddingTop()+(float)a.getDouble(1)*scale',source)
-        self.assertIn('WEB_TOUCH_RECEIPT',source)
+        self.assertIn('web.getScale()',source)
+        self.assertIn('visualViewport?.offsetLeft',source)
+        self.assertIn('visualViewport?.offsetTop',source)
+        self.assertIn('trusted touch reached',source)
+        self.assertNotIn('web.getPaddingTop()+(float)a.getDouble(1)*scale',source)
+        # Reproduce the native receipt: x360,y857 missed at CSS137.14,406.52.
+        scale, offset_y = 2.625, 80
+        self.assertAlmostEqual(360/scale,137.142857,places=5)
+        self.assertAlmostEqual(857.1206/scale+offset_y,406.52213,places=3)
+        x,y=160*scale,(324.0535888671875-offset_y)*scale
+        self.assertAlmostEqual(x,420)
+        self.assertAlmostEqual(y,640.64067,places=4)
+        self.assertAlmostEqual(y/scale+offset_y,324.0535888671875)
     def test_signing_not_in_source_and_no_private_media(self):
         self.assertNotIn('storepass ',(ROOT/'android/build-test-apk.sh').read_text())
         self.assertFalse(list((ROOT/'android/app/src/main').rglob('*.mp4')))

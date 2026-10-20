@@ -12,16 +12,20 @@ public class RuntimeChecks extends Instrumentation {
  AccessibilityNodeInfo find(AccessibilityNodeInfo n,String name){if(n==null)return null;String t=""+n.getText(),d=""+n.getContentDescription();if((name.equalsIgnoreCase(t)||name.equalsIgnoreCase(d)) && n.isVisibleToUser()){android.graphics.Rect b=new android.graphics.Rect();n.getBoundsInScreen(b);if(!b.isEmpty())return n;}for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo found=find(n.getChild(i),name);if(found!=null)return found;}return null;}
  void tapWeb(String selector)throws Exception{
   js("document.querySelector("+JSONObject.quote(selector)+").scrollIntoView({block:'center',behavior:'instant'})");Thread.sleep(1000);
-  js("window.__testTouch=[];for(const t of ['pointerdown','pointerup','click'])document.addEventListener(t,e=>window.__testTouch.push([e.type,e.isTrusted,e.clientX,e.clientY,e.target.outerHTML?.slice(0,150)]),{capture:true,once:true})");
+  js("window.__testTouch=[];for(const t of ['pointerdown','pointerup','click'])document.addEventListener(t,e=>window.__testTouch.push([e.type,e.isTrusted,e.clientX,e.clientY,e.target.outerHTML?.slice(0,150),!!e.target.closest("+JSONObject.quote(selector)+")]),{capture:true,once:true})");
   android.graphics.Bitmap before=getUiAutomation().takeScreenshot();if(before!=null){try(java.io.FileOutputStream file=new java.io.FileOutputStream(new java.io.File(getTargetContext().getExternalFilesDir(null),"web-tap.png"))){before.compress(android.graphics.Bitmap.CompressFormat.PNG,100,file);}before.recycle();}
-  String raw=js("JSON.stringify((()=>{const e=document.querySelector("+JSONObject.quote(selector)+");const r=e.getBoundingClientRect();const x=r.left+r.width/2,y=r.top+r.height/2;const hit=document.elementFromPoint(x,y);return [x,y,innerWidth,!!hit&&(e===hit||e.contains(hit)),e.disabled,hit?.outerHTML.slice(0,250)]})())");
+  String raw=js("JSON.stringify((()=>{const e=document.querySelector("+JSONObject.quote(selector)+");const r=e.getBoundingClientRect();const x=r.left+r.width/2,y=r.top+r.height/2;const hit=document.elementFromPoint(x,y);return [x,y,innerWidth,!!hit&&(e===hit||e.contains(hit)),e.disabled,hit?.outerHTML.slice(0,250),visualViewport?.offsetLeft||0,visualViewport?.offsetTop||0,visualViewport?.scale||1,devicePixelRatio]})())");
   log("WEB_TAP "+selector+" "+raw);
   JSONArray a=new JSONArray((String)new JSONTokener(raw).nextValue());
   if(!a.getBoolean(3)||a.optBoolean(4))throw new Exception("Web control obscured or disabled: "+selector);
   final int[] origin=new int[2];runOnMainSync(()->web.getLocationOnScreen(origin));
-  // MainActivity insets pad the WebView. CSS coordinates start inside that
-  // padding, not at the view's screen origin; ignoring it misses short controls.
-  float scale=(web.getWidth()-web.getPaddingLeft()-web.getPaddingRight())/(float)a.getDouble(2),x=origin[0]+web.getPaddingLeft()+(float)a.getDouble(0)*scale,y=origin[1]+web.getPaddingTop()+(float)a.getDouble(1)*scale;
+  // CSS client coordinates are layout-viewport coordinates. WebView's actual
+  // page scale includes density/zoom, while innerWidth can exceed the visible
+  // viewport. Remove visualViewport pan before scaling. WebView padding must
+  // NOT be added: observed trusted receipts include it in the viewport transform.
+  final float[] pageScale={0};runOnMainSync(()->pageScale[0]=web.getScale());
+  float scale=pageScale[0],x=origin[0]+((float)a.getDouble(0)-(float)a.getDouble(6))*scale,y=origin[1]+((float)a.getDouble(1)-(float)a.getDouble(7))*scale;
+  if(!(scale>0))throw new Exception("Invalid WebView page scale");
   log("WEB_SCREEN_TAP x="+x+" y="+y+" scale="+scale+" padding="+web.getPaddingLeft()+","+web.getPaddingTop()+","+web.getPaddingRight()+","+web.getPaddingBottom());
   // Dispatch through the OS input pipeline, with real down/up duration. Direct
   // WebView dispatch can race renderer/compositor scrolling and gives no receipt.
@@ -32,6 +36,7 @@ public class RuntimeChecks extends Instrumentation {
   sent=getUiAutomation().injectInputEvent(up,true)&&sent;up.recycle();
   if(!sent)throw new Exception("Web touch injection refused: "+selector);
   Thread.sleep(1500);
+  check("window.__testTouch.some(e=>e[0]==='pointerdown'&&e[1]&&e[5])","trusted touch reached "+selector);
   log("WEB_TOUCH_RECEIPT "+selector+" "+js("JSON.stringify({events:window.__testTouch,viewport:[innerWidth,innerHeight,devicePixelRatio,visualViewport?.offsetTop,scrollY]})"));
  }
  boolean scrollNative(AccessibilityNodeInfo n){if(n==null)return false;if(n.isScrollable() && n.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD))return true;for(int i=0;i<n.getChildCount();i++)if(scrollNative(n.getChild(i)))return true;return false;}
