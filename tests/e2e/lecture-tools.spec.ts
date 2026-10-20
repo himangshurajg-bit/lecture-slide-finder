@@ -1,0 +1,37 @@
+import {test,expect} from '@playwright/test';
+import path from 'node:path';
+const fixture=path.resolve('tests/fixtures/lecture.mp4');
+test('local speed and passage repeat preserve saved notes and stop on replacement',async({page})=>{
+ await page.goto('/');
+ await expect(page.locator('#repeat-passage')).toBeDisabled();
+ await page.locator('#video-file').setInputFiles(fixture);
+ await expect.poll(()=>page.locator('#video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThan(0);
+ await page.getByRole('button',{name:'Try a sample'}).click();
+ await page.getByRole('button',{name:'Save note at 00:00'}).click();
+ await page.locator('#playback-speed').selectOption('1.5');
+ expect(await page.locator('#video').evaluate((v:HTMLVideoElement)=>v.playbackRate)).toBe(1.5);
+ await page.getByRole('button',{name:'Jump to 00:00',exact:true}).click();
+ await expect(page.locator('#repeat-passage')).toBeEnabled();
+ await page.locator('#repeat-passage').click();
+ await expect(page.locator('#repeat-passage')).toHaveAttribute('aria-pressed','true');
+ await page.locator('#video').evaluate(async(v:HTMLVideoElement)=>{await v.play();v.currentTime=4.1;v.dispatchEvent(new Event('timeupdate'));});
+ expect(await page.locator('#video').evaluate((v:HTMLVideoElement)=>v.currentTime)).toBeLessThan(1);
+ await page.locator('#video').evaluate((v:HTMLVideoElement)=>v.pause());
+ await expect(page.locator('#notes-count')).toHaveText('1');
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Try a sample'}).click();
+ await expect(page.locator('#repeat-passage')).toBeDisabled();
+ await expect(page.locator('#repeat-passage')).toHaveAttribute('aria-pressed','false');
+});
+test('global light is a single nonblocking bounded layer and respects reduced motion',async({page})=>{
+ await page.goto('/');
+ await page.mouse.click(30,250);
+ await expect(page.locator('.touch-aura')).toHaveCount(1);
+ expect(await page.locator('.touch-aura').evaluate(el=>getComputedStyle(el).pointerEvents)).toBe('none');
+ await expect(page.locator('.touch-aura')).not.toHaveClass(/lit/,{timeout:1500});
+ await page.getByRole('button',{name:'Try a sample'}).click();await expect(page.locator('.cue')).toHaveCount(3);
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.getByRole('button',{name:'Save note at 00:00'}).click();await expect(page.locator('#notes-count')).toHaveText('1');
+ expect(await page.locator('.touch-aura').evaluate(el=>getComputedStyle(el).display)).toBe('none');
+ expect(await page.locator('.glass').first().evaluate(el=>getComputedStyle(el).animationName)).toBe('none');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

@@ -1,0 +1,11 @@
+1
+00:00:00,000 --> 00:00:04,000
+Introduction to motion.
+
+2
+00:00:04,000 --> 00:00:08,000
+Mass and acceleration.
+
+3
+00:00:08,000 --> 00:00:12,000
+Force equals mass times acceleration.

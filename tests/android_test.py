@@ -12,9 +12,11 @@ class AndroidBoundaryTests(unittest.TestCase):
     def test_no_network_or_broad_storage_permissions(self):
         self.assertEqual(self.manifest.findall('uses-permission'),[])
         self.assertEqual(self.manifest.find('application').get(ANDROID+'allowBackup'),'false')
-    def test_minimum_and_explicit_test_version(self):
+    def test_minimum_and_release_candidate_version(self):
         self.assertEqual(self.manifest.find('uses-sdk').get(ANDROID+'minSdkVersion'),'26')
-        self.assertIn('test',self.manifest.get(ANDROID+'versionName'))
+        self.assertEqual(self.manifest.get(ANDROID+'versionName'),'1.00.0.00 stable')
+        self.assertEqual(self.manifest.find('application').get(ANDROID+'debuggable'),'false')
+        self.assertEqual(self.manifest.get(ANDROID+'versionCode'),'2')
     def test_no_javascript_interface_or_file_origin_access(self):
         self.assertNotIn('addJavascriptInterface',self.java)
         for statement in ['setAllowFileAccess(false)', 'setAllowUniversalAccessFromFileURLs(false)', 'setAllowFileAccessFromFileURLs(false)', 'MIXED_CONTENT_NEVER_ALLOW']:
@@ -22,7 +24,10 @@ class AndroidBoundaryTests(unittest.TestCase):
     def test_origin_checks_and_user_selected_document_exports(self):
         for statement in ['!HOME.equals(url)', 'Intent.ACTION_CREATE_DOCUMENT', 'Intent.ACTION_OPEN_DOCUMENT', 'selectedUris.contains', 'value.length() > 5*1024*1024']:
             self.assertIn(statement,self.java)
-        self.assertIn('connect-src \'none\'',self.java)
+        self.assertIn("connect-src 'self' blob: data:",self.java)
+        self.assertIn("worker-src 'self'",self.java)
+        self.assertIn('!HOST.equals(u.getHost())',self.java)
+        self.assertNotIn('connect-src *',self.java)
     def test_signing_not_in_source_and_no_private_media(self):
         self.assertNotIn('storepass ',(ROOT/'android/build-test-apk.sh').read_text())
         self.assertFalse(list((ROOT/'android/app/src/main').rglob('*.mp4')))

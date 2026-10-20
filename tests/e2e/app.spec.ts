@@ -8,7 +8,7 @@ test('import, search, seek, frame capture, note export and responsive layout',as
  await page.locator('#video-file').setInputFiles(fixture);
  await expect.poll(()=>page.locator('video').first().evaluate((el:HTMLVideoElement)=>el.readyState)).toBeGreaterThan(0);
  await page.locator('#transcript-file').setInputFiles({name:'lecture.srt',mimeType:'text/plain',buffer:Buffer.from(transcript)});
- await page.getByRole('searchbox').fill('mass');await expect(page.locator('.cue')).toHaveCount(1);
+ await page.getByRole('searchbox',{name:'Search transcript',exact:true}).fill('mass');await expect(page.locator('.cue')).toHaveCount(1);
  await page.getByRole('button',{name:'Jump to 00:04',exact:true}).click();
  await expect(page.locator('#frame-box')).toBeVisible();
  // The second slide's known synthetic background proves the canvas is a decoded frame, not a placeholder.
@@ -24,11 +24,11 @@ test('import, search, seek, frame capture, note export and responsive layout',as
 test('bad import preserves transcript and hostile text cannot execute',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Try a sample'}).click();
  await page.locator('#transcript-file').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('[{"start":2,"end":1,"text":"bad"}]')});
- await expect(page.getByRole('status')).toContainText('invalid time');await expect(page.locator('.cue')).toHaveCount(3);
+ await expect(page.locator('#status')).toContainText('invalid time');await expect(page.locator('.cue')).toHaveCount(3);
  await page.locator('#transcript-file').setInputFiles({name:'x.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify([{start:0,end:1,text:'<img src=x onerror="window.pwned=true">'}]))});
  await expect(page.locator('.cue p')).toContainText('<img');expect(await page.evaluate(()=>Reflect.get(window,'pwned'))).toBeUndefined();
- await page.getByRole('button',{name:'Jump to 00:00'}).click();await expect(page.getByRole('status')).toContainText('Open a playable video');
- await page.getByRole('searchbox').fill('not found');await expect(page.getByText('No matching passages.')).toBeVisible();
+ await page.getByRole('button',{name:'Jump to 00:00'}).click();await expect(page.locator('#status')).toContainText('Open a playable video');
+ await page.getByRole('searchbox',{name:'Search transcript',exact:true}).fill('not found');await expect(page.getByText('No matching passages.')).toBeVisible();
 });
 test('app shell works offline after a complete online visit',async({page,context})=>{
  await page.goto('/');await page.evaluate(()=>navigator.serviceWorker.ready);await page.reload();await page.getByRole('button',{name:'Try a sample'}).click();
@@ -39,7 +39,7 @@ test('changing transcript or video asks before discarding notes',async({page})=>
  await page.getByRole('button',{name:'Save note at 00:00'}).click();
  page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Try a sample'}).click();await expect(page.locator('#notes-count')).toHaveText('1');
  page.once('dialog',dialog=>dialog.dismiss());await page.locator('#video-file').setInputFiles(fixture);await expect(page.locator('#notes-count')).toHaveText('1');
- page.once('dialog',dialog=>dialog.accept());await page.locator('#video-file').setInputFiles(fixture);await expect(page.locator('#notes-count')).toHaveText('0');await expect(page.getByRole('searchbox')).toBeDisabled();await expect(page.locator('.cue')).toHaveCount(0);
+ page.once('dialog',dialog=>dialog.accept());await page.locator('#video-file').setInputFiles(fixture);await expect(page.locator('#notes-count')).toHaveText('0');await expect(page.getByRole('searchbox',{name:'Search transcript',exact:true})).toBeDisabled();await expect(page.locator('.cue')).toHaveCount(0);
 });
 
 test('light liquid glass has bounded tap feedback and readable keyboard focus',async({page})=>{
@@ -57,8 +57,8 @@ test('light liquid glass has bounded tap feedback and readable keyboard focus',a
  await sample.focus();
  await expect(sample).toBeFocused();
  await page.keyboard.press('Enter');await expect(page.locator('.cue')).toHaveCount(3);
- await page.keyboard.press('/');await expect(page.getByRole('searchbox')).toBeFocused();
- const outline=await page.locator('.search-box').evaluate(el=>getComputedStyle(el).outlineStyle);
+ await page.keyboard.press('/');await expect(page.getByRole('searchbox',{name:'Search transcript',exact:true})).toBeFocused();
+ const outline=await page.locator('.search-box').first().evaluate(el=>getComputedStyle(el).outlineStyle);
  expect(outline).toBe('solid');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
@@ -94,14 +94,34 @@ test('liquid edges cover controls, disclosures and input without sacrificing act
   const edge=await page.locator(selector).first().evaluate(el=>{const s=getComputedStyle(el);return {border:s.borderTopWidth,style:s.borderTopStyle,shadow:s.boxShadow};});
   expect(edge.border).toBe('1px');expect(edge.style).toBe('solid');expect(edge.shadow).toContain('inset');
  }
- const disclosure=page.locator('summary');await disclosure.focus();await page.keyboard.press('Enter');await expect(page.locator('details')).toHaveAttribute('open','');
+ const disclosure=page.locator('summary').first();await disclosure.focus();await page.keyboard.press('Enter');await expect(page.locator('details').first()).toHaveAttribute('open','');
  await expect(disclosure).toHaveCSS('outline-style','solid');
  await disclosure.dispatchEvent('pointerdown',{button:0,clientX:20,clientY:20});await expect(disclosure.locator('.water-ripple')).toHaveCount(1);
  await expect(disclosure.locator('.water-ripple')).toHaveCount(0,{timeout:2000});
- await page.locator('.search-box').dispatchEvent('pointerdown',{button:0,clientX:20,clientY:20});await expect(page.locator('.search-box .water-ripple')).toHaveCount(1);
- await page.getByRole('searchbox').fill('connects');await expect(page.locator('.cue')).toHaveCount(1);
+ await page.locator('.search-box').first().dispatchEvent('pointerdown',{button:0,clientX:20,clientY:20});await expect(page.locator('.search-box .water-ripple')).toHaveCount(1);
+ await page.getByRole('searchbox',{name:'Search transcript',exact:true}).fill('connects');await expect(page.locator('.cue')).toHaveCount(1);
  await page.getByRole('button',{name:'Save note at 00:04'}).click();await expect(page.locator('#notes-count')).toHaveText('1');
  await page.emulateMedia({reducedMotion:'reduce'});await expect(page.locator('.water-ripple')).toHaveCount(0);
- await page.locator('summary').dispatchEvent('pointerdown',{button:0,clientX:20,clientY:20});await expect(page.locator('.water-ripple')).toHaveCount(0);
+ await page.locator('summary').first().dispatchEvent('pointerdown',{button:0,clientX:20,clientY:20});await expect(page.locator('.water-ripple')).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('saved notes and transcript survive restart, safely reselect video and can be cleared',async({page})=>{
+ await page.goto('/');await page.locator('#video-file').setInputFiles(fixture);
+ await page.getByRole('button',{name:'Try a sample'}).click();await page.getByRole('button',{name:'Save note at 00:04'}).click();
+ await page.getByRole('searchbox',{name:'Search transcript',exact:true}).fill('Newton');await page.reload();
+ await expect(page.locator('#notes-count')).toHaveText('1');await expect(page.locator('.cue')).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'Remove note at 00:04'})).toHaveAttribute('aria-pressed','true');
+ await page.locator('#video-file').setInputFiles(fixture);await expect(page.locator('#notes-count')).toHaveText('1');
+ await page.getByRole('button',{name:'Jump to 00:04',exact:true}).click();await expect(page.locator('#frame-box')).toBeVisible();
+ page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Clear saved session'}).click();await expect(page.locator('#notes-count')).toHaveText('1');
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Clear saved session'}).click();await page.reload();
+ await expect(page.locator('#notes-count')).toHaveText('0');await expect(page.getByRole('searchbox',{name:'Search transcript',exact:true})).toBeDisabled();
+});
+
+test('transcript import does not require newer Blob.text API',async({page})=>{
+ await page.addInitScript(()=>{Object.defineProperty(Blob.prototype,'text',{value:undefined,configurable:true});});
+ await page.goto('/');
+ await page.locator('#transcript-file').setInputFiles({name:'old-webview.srt',mimeType:'text/plain',buffer:Buffer.from('1\n00:00:00,000 --> 00:00:02,000\nCompatible transcript\n')});
+ await expect(page.locator('.cue p')).toHaveText('Compatible transcript');
 });

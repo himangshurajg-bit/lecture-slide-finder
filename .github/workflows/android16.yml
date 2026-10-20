@@ -1,0 +1,67 @@
+name: Android 16 qualification (candidate only)
+on:
+  push:
+    branches: ['ci/frame-gallery-qualification']
+permissions:
+  contents: read
+jobs:
+  native-api36:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Verify free standard public runner and KVM
+        run: |
+          test "$GITHUB_REPOSITORY" = himangshurajg-bit/lecture-slide-finder
+          test -e /dev/kvm
+          sudo chmod a+rw /dev/kvm
+          ls -l /dev/kvm
+      - name: Put Android SDK command-line tools on PATH
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+        with:
+          log-accepted-android-sdk-licenses: false
+          packages: platform-tools
+      - name: Install required SDK toolchain
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'build-tools;35.0.0' 'platforms;android-35' 'ndk;27.2.12479018'
+      - name: Build identical application logic with disposable CI signing
+        env:
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.2.12479018
+          LECTURE_SIGNING_DIR: ${{ runner.temp }}/lecture-ci-signing
+        run: |
+          mkdir -p android/runtime/ci-evidence
+          trap 'cp /tmp/candidate-build.log android/runtime/ci-evidence/ 2>/dev/null || true' EXIT
+          pnpm install --frozen-lockfile
+          bash android/build-test-apk.sh > /tmp/candidate-build.log 2>&1
+          CHECK_BUILD_ONLY=1 CHECK_FIXTURES=android/ci/fixtures bash android/tests/run.sh
+          mkdir -p android/runtime/ci-evidence
+          cp /tmp/candidate-build.log android/runtime/ci-evidence/
+      - name: Run actual Android 16 workflows with KVM
+        uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          heap-size: 512M
+          disk-size: 6G
+          disable-linux-hw-accel: false
+          emulator-boot-timeout: 240
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel on -cores 2
+          script: python3 android/ci/run-api36.py --frames-only
+      - name: Retain bounded test evidence only (never signing files or APK)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api36-qualification-evidence
+          path: android/runtime/ci-evidence/
+          retention-days: 3

@@ -24,9 +24,9 @@ test('Android export waits for native save result and carries actual Markdown',a
     await dialog.accept('pending');
   });
   await page.getByRole('button',{name:'Export notes'}).click();
-  await expect(page.getByRole('status')).toHaveText('Choose where to save your notes.');
+  await expect(page.locator('#status')).toHaveText('Choose where to save your notes.');
   await page.evaluate(()=>window.dispatchEvent(new CustomEvent('lecture-export-result',{detail:'Notes exported. Keep the saved file before closing this app.'})));
-  await expect(page.getByRole('status')).toHaveText('Notes exported. Keep the saved file before closing this app.');
+  await expect(page.locator('#status')).toHaveText('Notes exported. Keep the saved file before closing this app.');
   await expect(page.locator('#notes-count')).toHaveText('1');
 });
 
@@ -34,6 +34,6 @@ test('cancelled Android export preserves notes and reports no successful save',a
   page.once('dialog',dialog=>dialog.accept('pending'));
   await page.getByRole('button',{name:'Export notes'}).click();
   await page.evaluate(()=>window.dispatchEvent(new CustomEvent('lecture-export-result',{detail:'Export cancelled. Your notes are still here.'})));
-  await expect(page.getByRole('status')).toHaveText('Export cancelled. Your notes are still here.');
+  await expect(page.locator('#status')).toHaveText('Export cancelled. Your notes are still here.');
   await expect(page.locator('#notes-count')).toHaveText('1');
 });

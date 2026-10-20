@@ -19,5 +19,8 @@
   "packageManager": "pnpm@11.9.0",
   "engines": {
     "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "tesseract.js": "6.0.1"
   }
 }

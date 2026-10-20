@@ -1,0 +1,13 @@
+import {describe,it,expect} from 'vitest';
+import {addFrameText,normalizeText,decodeFrameStudy,frameMarkdown,MAX_POINTS,type FramePoint,type FrameStudy} from '../src/frame-points';
+const empty=():FrameStudy=>({version:1,source:'fixture:1',name:'lecture.mp4',points:[],decoded:0,checked:0,complete:false,manual:0});
+describe('source-grounded visible-frame notes',()=>{
+ it('normalizes lines without inventing sentences or interpreting equations',()=>{expect(normalizeText('  Force = mass × acceleration \r\n\n गति   बदलती है ')).toBe('Force = mass × acceleration\nगति बदलती है');});
+ it('groups only adjacent identical OCR and retains precise PTS/frame range',()=>{const p:FramePoint[]=[];addFrameText(p,{index:0,time:0},'Mass and acceleration',92);addFrameText(p,{index:1,time:.041},'Mass and acceleration',90);expect(p).toHaveLength(1);expect(p[0]).toMatchObject({firstFrame:0,lastFrame:1,end:.041,confidence:90});addFrameText(p,{index:3,time:.15},'Mass and acceleration',91);expect(p).toHaveLength(2);});
+ it('does not fabricate content from empty/failed OCR',()=>{const p:FramePoint[]=[];addFrameText(p,{index:0,time:0},' \n ',0);expect(p).toHaveLength(0);});
+ it('distinguishes manually captured pictures from exact decoder frame IDs',()=>{const s=empty();s.manual=1;addFrameText(s.points,{index:1000000000,time:4,manual:true},'Force',95);const out=frameMarkdown(s);expect(out).toContain('manual picture (no frame index)');expect(out).not.toContain('frames 1000000001');});
+ it('exports partial coverage, edit status and original OCR',()=>{const s=empty();s.decoded=s.checked=1;addFrameText(s.points,{index:0,time:.033},'Moss',50);s.points[0].text='Mass';s.points[0].edited=true;expect(frameMarkdown(s)).toContain('PARTIAL');expect(frameMarkdown(s)).toContain('Original OCR: Moss');expect(frameMarkdown(s)).toContain('- Mass');});
+ it('roundtrips validated state and rejects malformed or oversized saved points',()=>{expect(decodeFrameStudy(JSON.stringify(empty()))).toEqual(empty());expect(()=>decodeFrameStudy('{"version":1}')).toThrow();const s=empty();s.checked=1;expect(()=>decodeFrameStudy(JSON.stringify(s))).toThrow();s.checked=0;s.points=new Array(MAX_POINTS+1).fill({});expect(()=>decodeFrameStudy(JSON.stringify(s))).toThrow();});
+ it('never silently truncates long OCR content',()=>{const p:FramePoint[]=[];expect(()=>addFrameText(p,{index:0,time:0},'x'.repeat(12001),90)).toThrow('Text storage');expect(p).toHaveLength(0);});
+ it('caps data rather than dropping points and declaring complete',()=>{const p=new Array(MAX_POINTS).fill({text:'x',original:'x',lastFrame:0}) as FramePoint[];expect(()=>addFrameText(p,{index:2,time:1},'Different',90)).toThrow('Point limit');});
+});

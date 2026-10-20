@@ -1,0 +1,23 @@
+US English model for mobile Vosk applications
+
+Copyright 2020 Alpha Cephei Inc
+
+Accuracy: 10.38 (tedlium test) 9.85 (librispeech test-clean)
+Speed: 0.11xRT (desktop)
+Latency: 0.15s (right context)
+
+
+Hindi small model for Vosk
+
+WER
+
+%WER 39.08 [ 18597 / 47585, 1277 ins, 5489 del, 11831 sub ] exp/chain/tdnn/decode_test_gram_fast/wer_10_0.0
+%WER 20.89 [ 8400 / 40205, 1380 ins, 1873 del, 5147 sub ] exp/chain/tdnn/decode_test_iitm_fast/wer_11_0.0
+%WER 24.72 [ 11330 / 45839, 1501 ins, 879 del, 8950 sub ] exp/chain/tdnn/decode_test_mucs_fast/wer_10_0.0
+%WER 14.96 [ 19539 / 130589, 1737 ins, 1378 del, 16424 sub ] exp/chain/tdnn/decode_test_tts_fast/wer_7_0.0
+
+Vosk Android native runtime 0.3.75: https://github.com/alphacep/vosk-api
+Bundled small English US 0.15 and Hindi 0.22 models: https://alphacephei.com/vosk/models
+The official model listing licenses both models under Apache-2.0.
+Vosk/Kaldi toolkit: Apache-2.0; OpenFst: Apache-2.0.
+No JNA, ONNX, Whisper or Assamese weight files are included in this APK.
