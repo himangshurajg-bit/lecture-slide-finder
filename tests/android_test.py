@@ -51,6 +51,12 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertAlmostEqual(x,420)
         self.assertAlmostEqual(y,640.64067,places=4)
         self.assertAlmostEqual(y/scale+offset_y,324.0535888671875)
+    def test_native_picker_scrolls_child_list_before_wrapper(self):
+        source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/RuntimeChecks.java').read_text()
+        method=source.split('boolean scrollNative(')[1].split('void preferNativeListView')[0]
+        self.assertLess(method.index('scrollNative(n.getChild(i))'),method.index('n.isScrollable()'))
+        speech=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/AsrUiChecks.java').read_text()
+        self.assertIn('clickNative("Downloads");preferNativeListView();clickNative("speech-',speech)
     def test_speech_ui_requires_search_and_export_readback(self):
         source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/AsrUiChecks.java').read_text()
         runner=(ROOT/'android/ci/run-api36.py').read_text()

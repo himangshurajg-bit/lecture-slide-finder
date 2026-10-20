@@ -10,7 +10,7 @@ public final class AsrUiChecks extends RuntimeChecks {
   Intent i=new Intent().setClassName(getTargetContext(),"io.github.himangshurajg.lecture.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);activity=startActivitySync(i);java.lang.reflect.Field f=activity.getClass().getDeclaredField("web");f.setAccessible(true);web=(WebView)f.get(activity);
   await("!!document.querySelector('#demo')","speech UI launches");js("localStorage.clear();location.reload()");Thread.sleep(2000);await("!!document.querySelector('#demo')","speech clean state");
   check("document.querySelector('#asr-generate').disabled","speech requires chosen media");
-  tapWeb("[data-pick=video-file]");clickNative("Show roots");clickNative("Downloads");clickNative("speech-"+language+".mp4");
+  tapWeb("[data-pick=video-file]");clickNative("Show roots");clickNative("Downloads");preferNativeListView();clickNative("speech-"+language+".mp4");
   await("document.querySelector('#video').readyState>=1 && !document.querySelector('#asr-generate').disabled","chosen speech video accepted");
   js("document.querySelector('#asr-language').value='"+language+"'");tapWeb("#asr-generate");clickNative("Transcribe");
   await("document.querySelectorAll('.cue').length>0 && document.querySelector('#asr-status').textContent.includes('100%')","UI speech completion");

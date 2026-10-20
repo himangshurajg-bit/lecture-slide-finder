@@ -39,7 +39,17 @@ public class RuntimeChecks extends Instrumentation {
   check("window.__testTouch.some(e=>e[0]==='pointerdown'&&e[1]&&e[5])","trusted touch reached "+selector);
   log("WEB_TOUCH_RECEIPT "+selector+" "+js("JSON.stringify({events:window.__testTouch,viewport:[innerWidth,innerHeight,devicePixelRatio,visualViewport?.offsetTop,scrollY]})"));
  }
- boolean scrollNative(AccessibilityNodeInfo n){if(n==null)return false;if(n.isScrollable() && n.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD))return true;for(int i=0;i<n.getChildCount();i++)if(scrollNative(n.getChild(i)))return true;return false;}
+ boolean scrollNative(AccessibilityNodeInfo n){
+  if(n==null)return false;
+  // DocumentsUI wraps dir_list in a scrollable container. Scroll the actual
+  // child file list first: the wrapper can report success without moving rows.
+  for(int i=0;i<n.getChildCount();i++)if(scrollNative(n.getChild(i)))return true;
+  return n.isScrollable() && n.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
+ }
+ void preferNativeListView()throws Exception{
+  AccessibilityNodeInfo list=find(getUiAutomation().getRootInActiveWindow(),"List view");
+  if(list!=null){clickNative("List view");log("PICKER list view avoids clipped off-screen grid filename labels");}
+ }
  void clickNative(String name)throws Exception{
   long deadline=System.currentTimeMillis()+90000;int scrolls=0;
   while(System.currentTimeMillis()<deadline){
