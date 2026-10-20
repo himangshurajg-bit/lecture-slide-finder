@@ -1,5 +1,8 @@
 name: Build and test
-on: [push, pull_request]
+on:
+  push:
+    branches-ignore: ['ci/android16-qualification']
+  pull_request:
 permissions:
   contents: read
 jobs:

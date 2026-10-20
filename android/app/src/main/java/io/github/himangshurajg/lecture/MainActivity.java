@@ -12,6 +12,8 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.json.JSONObject;
+import java.util.concurrent.atomic.AtomicBoolean;
+import android.view.WindowManager;
 
 /** Offline, bundled WebView shell. No server, network permission or JavaScript interface. */
 public final class MainActivity extends Activity {
@@ -20,6 +22,12 @@ public final class MainActivity extends Activity {
     private static final int PICK = 10, EXPORT = 11;
     private WebView web;
     private ValueCallback<Uri[]> chooser;
+    private boolean choosingVideo;
+    private Uri candidateVideoUri, acceptedVideoUri;
+    private AtomicBoolean asrCancel;
+    private Thread asrThread;
+    private boolean destroyed;
+    private int asrGeneration;
     private String pendingNotes;
     private final Set<String> selectedUris = Collections.synchronizedSet(new HashSet<String>());
 
@@ -35,7 +43,7 @@ public final class MainActivity extends Activity {
         web.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(false);
+        settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true); // Only user-selected document URIs are handed to file inputs.
         settings.setAllowFileAccessFromFileURLs(false);
@@ -77,6 +85,7 @@ public final class MainActivity extends Activity {
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE);
                 boolean video = false;
                 for (String accept : params.getAcceptTypes()) if (accept.startsWith("video/")) video=true;
+                choosingVideo=video;
                 intent.setType(video ? "video/*" : "*/*");
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 try { startActivityForResult(intent, PICK); }
@@ -84,6 +93,11 @@ public final class MainActivity extends Activity {
                 return true;
             }
             @Override public boolean onJsPrompt(WebView view, String url, String message, String value, JsPromptResult result) {
+                if(HOME.equals(url)) {
+                    if("lecture-video-accepted-v1".equals(message)) {acceptedVideoUri=candidateVideoUri;result.confirm("ok");return true;}
+                    if("lecture-asr-start-v1".equals(message)) {startTranscription(value);result.confirm("handled");return true;}
+                    if("lecture-asr-cancel-v1".equals(message)) {if(asrCancel!=null)asrCancel.set(true);result.confirm("ok");return true;}
+                }
                 if (!HOME.equals(url) || !"lecture-export-v1".equals(message) || value == null || value.length() > 5*1024*1024) {
                     result.cancel(); return true;
                 }
@@ -113,6 +127,7 @@ public final class MainActivity extends Activity {
         Uri uri = result==RESULT_OK && data!=null ? data.getData() : null;
         if(request==PICK && chooser!=null) {
             if(uri!=null && "content".equals(uri.getScheme())) {
+                if(choosingVideo)candidateVideoUri=uri;
                 selectedUris.add(uri.toString()); chooser.onReceiveValue(new Uri[]{uri});
             } else chooser.onReceiveValue(null);
             chooser=null;
@@ -126,24 +141,63 @@ public final class MainActivity extends Activity {
                 try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")) {
                     if(out==null)throw new IOException("No output stream");
                     out.write(text.getBytes(StandardCharsets.UTF_8));
-                    outcome="Notes exported. Keep the saved file before closing this app.";
+                    outcome="Notes exported. A separate copy is saved in your chosen location.";
                 } catch(Exception e) { outcome="Export failed. Your notes are still here; try another location."; }
                 final String completed=outcome;
                 runOnUiThread(()->tell(completed));
             },"lecture-export").start();
         }
     }
+    private void asrEvent(String state,String message,int percent) {
+        if(destroyed)return;
+        web.evaluateJavascript("window.dispatchEvent(new CustomEvent('lecture-asr-state',{detail:{state:"+JSONObject.quote(state)+",message:"+JSONObject.quote(message)+",percent:"+percent+"}}))",null);
+    }
+    private void startTranscription(String language) {
+        if(asrThread!=null) {asrEvent("busy","Please wait for the current transcription to stop.",-1);return;}
+        if(acceptedVideoUri==null){asrEvent("error","Open a video first.",-1);return;}
+        if(!"en".equals(language) && !"hi".equals(language)){asrEvent("error","Choose English or Hindi.",-1);return;}
+        final Uri source=acceptedVideoUri;
+        new AlertDialog.Builder(this).setTitle("Generate transcript on this phone?")
+            .setMessage("English or Hindi transcription runs entirely on this phone, without a computer, internet, account or paid API. First use prepares the chosen bundled model in app storage. Allow about 250 MiB of free storage for both models. Choose the recording’s main language; mixed-language speech, names and technical terms can be inaccurate. Keep this screen open; leaving cancels the job. Your existing notes stay until you accept the result.")
+            .setPositiveButton("Transcribe",(d,w)->{
+                final int generation=++asrGeneration;
+                asrCancel=new AtomicBoolean(false);final AtomicBoolean cancel=asrCancel;
+                getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                asrEvent("running","Preparing offline transcription…",-1);
+                asrThread=new Thread(()->{
+                    String transcript=null,error=null;boolean stopped=false;
+                    try {transcript=new OfflineTranscriber(this,cancel,(stage,percent)->runOnUiThread(()->{if(generation==asrGeneration)asrEvent("running",stage,percent);})).transcribe(source,language);}
+                    catch(InterruptedException e){stopped=true;}
+                    catch(Throwable e){error="Cannot transcribe this recording on this device. Check free storage, the recording language and audio format, then try a shorter clip. Your existing notes are unchanged.";android.util.Log.e("LectureASR","Offline transcription failed: "+e.getClass().getSimpleName());}
+                    final String json=transcript,problem=error;final boolean wasCancelled=stopped||cancel.get();
+                    runOnUiThread(()->{
+                        asrThread=null;asrCancel=null;if(destroyed||generation!=asrGeneration)return;
+                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                        if(wasCancelled){asrEvent("cancelled","Transcription cancelled. Your existing transcript and notes are unchanged.",-1);return;}
+                        if(problem!=null){asrEvent("error",problem,-1);return;}
+                        // Small messages avoid Android's Binder size limit for long lecture transcripts.
+                        web.evaluateJavascript("window.__lectureAsrResult=''",null);
+                        for(int i=0;i<json.length();i+=16000)web.evaluateJavascript("window.__lectureAsrResult+="+JSONObject.quote(json.substring(i,Math.min(i+16000,json.length()))),null);
+                        web.evaluateJavascript("window.dispatchEvent(new CustomEvent('lecture-asr-complete',{detail:window.__lectureAsrResult}));delete window.__lectureAsrResult",null);
+                        asrEvent("done","Generated on this phone. Review recognition accuracy before using your notes.",100);
+                    });
+                },"lecture-offline-asr");asrThread.start();
+            }).setNegativeButton("Cancel",(d,w)->asrEvent("cancelled","Transcription was not started.",-1))
+            .setOnCancelListener(d->asrEvent("cancelled","Transcription was not started.",-1)).show();
+    }
     private void tell(String message) {
         web.evaluateJavascript("window.dispatchEvent(new CustomEvent('lecture-export-result',{detail:"+JSONObject.quote(message)+"}))",null);
     }
     @Override public void onBackPressed() {
         new AlertDialog.Builder(this).setTitle("Close lecture?")
-            .setMessage("Export your notes first. Closing the app clears this session.")
+            .setMessage("Your transcript and notes stay saved on this device. Select the video again when you return.")
             .setPositiveButton("Close",(d,w)->finish()).setNegativeButton("Keep studying",null).show();
     }
-    @Override protected void onPause() { web.onPause(); super.onPause(); }
+    @Override protected void onPause() { if(asrCancel!=null)asrCancel.set(true); web.evaluateJavascript("(function(){var v=document.querySelector('video');if(v)v.pause()})()",null); web.onPause(); super.onPause(); }
     @Override protected void onResume() { super.onResume(); if(web!=null)web.onResume(); }
     @Override protected void onDestroy() {
+        destroyed=true; ++asrGeneration;
+        if(asrCancel!=null)asrCancel.set(true);
         if(chooser!=null)chooser.onReceiveValue(null);
         pendingNotes=null;
         if(web!=null)web.destroy();

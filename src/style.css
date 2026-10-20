@@ -236,3 +236,61 @@ label:has(+input:focus-visible) { outline: 2px solid #216b73; }
   .glass,button,.button,.search-box { border: 1px solid CanvasText; }
   .intro::after,.water-ripple,body::before,body::after { display: none; }
 }
+
+/* Dimension and positioning fallback for the WebView bundled with Android 8/9. */
+.video-wrap { height: 0; padding-bottom: 62.5%; }
+video, .empty-player { top: 0; right: 0; bottom: 0; left: 0; }
+@media (max-width: 700px) { .video-wrap { padding-bottom: 68.75%; } }
+@supports (aspect-ratio: 16 / 10) { .video-wrap { height: auto; padding-bottom: 0; } }
+
+/* Unified ambient-glass surfaces; static lighting avoids continuous paint work. */
+:root { --elastic: cubic-bezier(.18,1.35,.28,1); }
+.top { position: relative; }
+.top::before { content:"";position:absolute;inset:16px 28px -12px;border-radius:26px;pointer-events:none;z-index:-1;background:linear-gradient(125deg,#ffffff89,#e5f3f277);border:1px solid #ffffffcc;box-shadow:var(--rim),0 8px 28px #4b85800d; }
+.glass { background:radial-gradient(ellipse at 12% 0%,#ffffffd9,transparent 55%),radial-gradient(ellipse at 100% 80%,#cae8e540,transparent 56%),linear-gradient(125deg,#ffffffad,#ffffff69 54%,#f4faf8a1);box-shadow:0 22px 44px #375d6114,0 4px 9px #375d610a,inset 1px 2px 1px #fff,inset -1px -2px 3px #719c9c24; }
+.playback-tools { display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:15px 23px 0; }
+.playback-tools label { font-size:11px;color:var(--muted); }
+select { font:inherit;font-size:12px;color:var(--ink);border:1px solid #8eb9b36e;border-radius:12px;padding:10px 12px;min-height:44px;max-width:100%;background:linear-gradient(140deg,#fffffff2,#e6f3eeaf);box-shadow:var(--rim),0 4px 10px #315c5c0c; }
+select:focus-visible { outline:2px solid #216b73;outline-offset:3px; }
+#android-asr { padding:15px;margin-bottom:18px;border:1px solid #ffffffd6;border-radius:18px;background:linear-gradient(130deg,#ffffff9e,#d7ece744);box-shadow:var(--rim),0 5px 14px #466e6a09; }
+#android-asr>label { display:block;font-size:11px;color:var(--muted);margin-bottom:8px; }
+#repeat-passage[aria-pressed=true] { color:#174b4b;background:linear-gradient(140deg,#d8f0e9e6,#bde1d29e);border-color:#3b817c; }
+#asr-status { font-size:12px;line-height:1.7;color:var(--ink);overflow-wrap:anywhere; }
+#storage-warning { font-size:12px;line-height:1.7;color:#813d25;background:#fff8ece6;border:1px solid #b78b6577;border-radius:14px;padding:12px; }
+.touch-aura { position:fixed;width:150px;height:150px;margin:-75px;pointer-events:none;z-index:1000;border-radius:50%;opacity:0;background:radial-gradient(circle,#ffffffb0, #b5e6df55 28%,#eefbfa70 39%,transparent 67%); }
+@media (prefers-reduced-motion:no-preference) {
+ button,.button,summary,.search-box,.brand,select { transition:transform 340ms var(--elastic),background-color 200ms ease,border-color 200ms ease,box-shadow 200ms ease; }
+ button:not(:disabled):active,.button:active,summary:active { transform:translateY(1px) scale(.967);box-shadow:inset 0 2px 5px #365e5c19,inset 0 1px 1px #fff,0 1px 5px #315c5c0e; }
+ .touch-aura.lit { animation:touch-light 600ms ease-out both; }
+ @keyframes touch-light { 0%{opacity:.8;transform:scale(.25)}35%{opacity:.45;transform:scale(.95)}100%{opacity:0;transform:scale(1.2)} }
+}
+@media (max-width:760px) { .top::before{inset:13px 13px -12px}.playback-tools{padding:13px 21px 0;gap:7px}.playback-tools label{flex-basis:100%} }
+@media (prefers-reduced-motion:reduce),(forced-colors:active) { .touch-aura { display:none!important; } }
+
+/* Richer motion uses transforms/opacity, never continuous blur or layout animation. */
+@media (prefers-reduced-motion:no-preference) {
+ body::before { animation:ambient-left 22s ease-in-out infinite alternate; }
+ body::after { animation:ambient-right 28s ease-in-out infinite alternate; }
+ .intro::after { animation:droplet-float 9s ease-in-out infinite alternate; }
+ .intro .eyebrow { animation:surface 600ms var(--elastic) both; }
+ .intro h1 { animation:hero-glass 800ms var(--elastic) both; }
+ .intro>p { animation:surface 700ms 130ms var(--elastic) both; }
+ .glass { animation:glass-arrive 850ms var(--elastic) both; }
+ .transcript-panel { animation-delay:100ms; }
+ .notes-panel { animation-delay:180ms; }
+ .cue:nth-child(-n+8) { animation:passage-arrive 480ms var(--elastic) both; }
+ .cue:nth-child(2) { animation-delay:35ms; }.cue:nth-child(3) { animation-delay:70ms; }.cue:nth-child(4) { animation-delay:105ms; }
+ .glass-bounce { animation:control-spring 560ms var(--elastic) both; }
+ .water-ripple { animation:elastic-ring 740ms ease-out both; }
+ #notes p { animation:note-unfold 550ms var(--elastic) both; }
+ .quiet-ambient::before,.quiet-ambient::after,.quiet-ambient .intro::after { animation-play-state:paused; }
+ @keyframes ambient-left { from{transform:translate(-8px,0) rotate(-22deg) scaleY(.8);opacity:.55}to{transform:translate(18px,-22px) rotate(-12deg) scaleY(.88);opacity:.95} }
+ @keyframes ambient-right { from{transform:translate(0,12px) rotate(25deg) scaleY(.88);opacity:.6}to{transform:translate(-22px,-12px) rotate(15deg) scaleY(.94);opacity:1} }
+ @keyframes droplet-float { from{transform:translateY(0) rotate(28deg)}to{transform:translateY(-13px) rotate(37deg)} }
+ @keyframes hero-glass { from{opacity:0;transform:translateY(22px) scale(.975)}to{opacity:1;transform:none} }
+ @keyframes glass-arrive { from{opacity:0;transform:perspective(1100px) translateY(24px) rotateX(4deg) scale(.975)}to{opacity:1;transform:none} }
+ @keyframes passage-arrive { from{opacity:0;transform:translateX(12px) scale(.98)}to{opacity:1;transform:none} }
+ @keyframes control-spring { 0%{transform:scale(.94)}48%{transform:scale(1.025)}75%{transform:scale(.993)}100%{transform:none} }
+ @keyframes elastic-ring { 0%{opacity:.9;transform:scale(.08,.13)}45%{opacity:.5;transform:scale(1.8,1.55)}70%{opacity:.2;transform:scale(1.65,1.9)}100%{opacity:0;transform:scale(2.4)} }
+ @keyframes note-unfold { from{opacity:0;transform:perspective(800px) rotateX(-8deg) translateY(12px)}to{opacity:1;transform:none} }
+}

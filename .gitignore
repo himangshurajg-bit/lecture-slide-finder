@@ -10,3 +10,6 @@ test-results/
 android/build/
 *.keystore
 *.jks
+
+android/runtime/
+android/asr-deps/

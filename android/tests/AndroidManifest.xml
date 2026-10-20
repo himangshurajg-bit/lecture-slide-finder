@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="io.github.himangshurajg.lecture.test">
+ <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+ <application android:label="Lecture runtime checks" />
+ <instrumentation android:name=".RuntimeChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Lecture runtime checks" />
+ <instrumentation android:name=".EdgeChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Lecture lifecycle checks" />
+ <instrumentation android:name=".AsrChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Native offline ASR checks" />
+ <instrumentation android:name=".NativeAbortChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Native model and cancellation checks" />
+ <instrumentation android:name=".DecodeChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Public audio fixture diagnostic" />
+ <instrumentation android:name=".AsrUiChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Installed speech UI checks" />
+</manifest>
