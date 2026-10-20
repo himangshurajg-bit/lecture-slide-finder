@@ -33,7 +33,7 @@ try:
     cmd(['adb','install','-r','android/build/lecture-slide-finder-1.00.0.00-stable.apk'],'install-candidate',90)
     cmd(['adb','install','-r','android/runtime/instrumentation/runtime-checks.apk'],'install-instrumentation',90)
     cmd(['adb','shell','mkdir','-p','/sdcard/Download'],'download-dir')
-    files={'frame-study.mp4':root/'tests/fixtures/frame-study.mp4','lecture.mp4':root/'tests/fixtures/lecture.mp4','lecture.srt':root/'android/ci/fixtures/lecture.srt','speech-en.mp4':root/'android/ci/fixtures/speech-en.mp4','speech-hi.mp4':root/'android/ci/fixtures/speech-hi.mp4'}
+    files={'frame-study.mp4':root/'tests/fixtures/frame-study.mp4','lecture.mp4':root/'tests/fixtures/lecture.mp4','lecture.srt':root/'android/ci/fixtures/lecture.srt','cancel-long.mp4':root/'android/ci/fixtures/cancel-long.mp4','speech-en.mp4':root/'android/ci/fixtures/speech-en.mp4','speech-hi.mp4':root/'android/ci/fixtures/speech-hi.mp4'}
     for name,path in files.items():
         cmd(['adb','push',str(path),'/sdcard/Download/'+name],'push-'+name)
         cmd(['adb','shell','am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Download/'+name],'scan-'+name)

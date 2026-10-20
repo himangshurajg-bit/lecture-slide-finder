@@ -66,6 +66,17 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertIn("'speech-export-bytes-'+language", runner)
         # The app exporter uses this exact heading, not the display's panel title.
         self.assertIn('# Study notes — ', (ROOT/'src/core.ts').read_text())
+    def test_cancellation_isolated_from_short_completion_and_exports(self):
+        source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/AsrUiChecks.java').read_text()
+        self.assertLess(source.index('generated speech Markdown save accepted'), source.index('cancel-long.mp4'))
+        self.assertIn("duration>590", source)
+        self.assertIn('No active transcription before cancel', source)
+        self.assertIn('Cancellation changed previous transcript or notes', source)
+        import hashlib, json
+        fixtures=ROOT/'android/ci/fixtures'
+        sums=json.loads((fixtures/'SHA256SUMS.json').read_text())
+        self.assertEqual(hashlib.sha256((fixtures/'cancel-long.mp4').read_bytes()).hexdigest(),sums['cancel-long.mp4'])
+        self.assertIn("'cancel-long.mp4':root/",(ROOT/'android/ci/run-api36.py').read_text())
     def test_signing_not_in_source_and_no_private_media(self):
         self.assertNotIn('storepass ',(ROOT/'android/build-test-apk.sh').read_text())
         self.assertFalse(list((ROOT/'android/app/src/main').rglob('*.mp4')))

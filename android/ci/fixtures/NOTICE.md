@@ -9,3 +9,5 @@ These are test fixtures, not private lecture recordings.
 Successful recognition of these short samples is pipeline evidence, not representative lecture accuracy. No Assamese fixture or recognition is included.
 
 - `frame-stress.mp4`: original synthetic six-frame physics slide repeated/re-encoded as 60 seconds, 15 fps, 900 H.264 frames. This tests sequential decoder resource behavior, not longer-lecture OCR accuracy. Generated using ffmpeg `-stream_loop -1 -i tests/fixtures/frame-study.mp4 -t 60 -r 15 -c:v libx264 -preset fast -crf 26 -pix_fmt yuv420p -an`.
+
+- `cancel-long.mp4`: ten-minute stream-copy repetition of the same public-domain JFK `speech-en.mp4` fixture, used only to keep recognition active during cancellation testing (including Hindi model cancellation, not Hindi accuracy). Generated with ffmpeg `-stream_loop -1 -i speech-en.mp4 -t 600 -map 0 -c copy cancel-long.mp4`; container duration is 601 seconds. No new/private media.

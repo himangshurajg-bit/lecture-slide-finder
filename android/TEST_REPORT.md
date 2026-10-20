@@ -246,3 +246,8 @@ uses the same OS touch path without deliberate sleeps/screenshot capture before 
 its cancelled-state and previous-note/transcript preservation assertions remain.
 Instrumentation compilation and all 26 Python regressions passed locally. Integrated
 runtime rerun remains required; neither this diagnosis nor compilation qualifies a release.
+
+### Short-transcription cancellation isolation
+Integrated run 39500287891 passed document import/playback/export, both native speech engines, lifecycle/errors and frame stress. Both speech-screen tests recognized, searched, captured and saved passages, but timed out after attempting to cancel a second short recognition. Logcat shows an additional native window at that stage; source permits a replace-notes confirmation when recognition finishes before the cancellation touch. This is not evidence of a recognition-engine failure.
+
+The revised alternative exports the real completed English/Hindi speech results first, then resets only test session state and opens a separate 601-second public-domain fixture through DocumentsUI. It imports a known prior transcript, saves a passage, requires an active native transcription thread, touches the real Cancel transcription control, and requires cancellation plus exact prior result/note preservation. Native speech export byte assertions remain mandatory. No production code or release assertions are bypassed. Runtime outcome of this alternative is pending, so stable publication remains withheld.

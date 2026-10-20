@@ -22,11 +22,29 @@ public final class AsrUiChecks extends RuntimeChecks {
   await("document.querySelectorAll('.cue').length>0 && document.querySelector('#results').textContent.includes('"+keyword+"')","search generated speech transcript");
   js("document.querySelector('.time').click()");await("!document.querySelector('#frame-box').hidden","speech cue seeks and captures actual video");
   js("document.querySelector('.save').click()");check("document.querySelector('#notes-count').textContent==='1'","speech passage saved");
-  tapWeb("#asr-generate");clickNative("Transcribe");await("!document.querySelector('#asr-cancel').hidden","speech cancel visible");tapWeb("#asr-cancel",true);
-  await("document.querySelector('#asr-status').textContent.includes('cancelled')","active UI speech cancellation");
-  check("document.querySelector('#notes-count').textContent==='1' && document.querySelectorAll('.cue').length>0","speech cancel preserves previous notes and result");
+  // Export the completed real speech result before testing cancellation. The old
+  // test restarted a 12-second clip and could finish during OS touch/scroll work,
+  // opening the replace-notes confirmation and blocking evaluateJavascript.
   tapWeb("#export");clickNative("Save");
   await("document.querySelector('#status').textContent.includes('Notes exported')","generated speech Markdown save accepted");
+  // Isolate active cancellation with a long public fixture. Keep a known prior
+  // transcript/note and verify their exact preservation through the real user path.
+  js("localStorage.clear();location.reload()");Thread.sleep(2000);await("!!document.querySelector('#demo')","cancellation clean state");
+  tapWeb("[data-pick=video-file]");clickNative("Show roots");clickNative("Downloads");preferNativeListView();clickNative("cancel-long.mp4");
+  await("document.querySelector('#video').duration>590 && !document.querySelector('#asr-generate').disabled","long cancellation media accepted");
+  tapWeb("[data-pick=transcript-file]");clickNative("Show roots");clickNative("Downloads");preferNativeListView();clickNative("lecture.srt");
+  await("document.querySelectorAll('.cue').length>0","previous transcript imported for cancellation");
+  js("document.querySelector('.save').click()");
+  String before=js("JSON.stringify([document.querySelector('#results').textContent,document.querySelector('#notes').textContent])");
+  js("document.querySelector('#asr-language').value='"+language+"'");
+  tapWeb("#asr-generate");clickNative("Transcribe");
+  await("!document.querySelector('#asr-cancel').hidden","speech cancel visible on long media");
+  java.lang.reflect.Field running=activity.getClass().getDeclaredField("asrThread");running.setAccessible(true);
+  if(running.get(activity)==null)throw new Exception("No active transcription before cancel");
+  tapWeb("#asr-cancel",true);
+  await("document.querySelector('#asr-status').textContent.includes('cancelled')","active UI speech cancellation");
+  if(!before.equals(js("JSON.stringify([document.querySelector('#results').textContent,document.querySelector('#notes').textContent])")))throw new Exception("Cancellation changed previous transcript or notes");
+  check("document.querySelector('#notes-count').textContent==='1' && document.querySelectorAll('.cue').length>0","speech cancel preserves previous notes and result");
   log("ALL_ASR_UI_CHECKS_PASSED "+language);result.putString("stream","Installed app speech UI pipeline passed; accuracy separately assessed.\n");finish(Activity.RESULT_OK,result);
  }catch(Throwable e){log("FAIL "+e);result.putString("stream",e.toString());finish(Activity.RESULT_CANCELED,result);}}
 }
