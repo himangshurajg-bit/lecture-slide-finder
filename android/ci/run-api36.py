@@ -53,6 +53,7 @@ try:
             results.append({'check':name,'passed':passed,'elapsed_seconds':round(time.monotonic()-start,2)})
         except Exception as e:results.append({'check':name,'passed':False,'error':str(e)})
         capture(name)
+        cmd(['adb','pull','/sdcard/Android/data/io.github.himangshurajg.lecture/files/web-tap.png',str(out/(name+'-web-tap.png'))],name+'-tap-capture',10,False)
     # Verify native export contents, not just a successful Save action.
     text=cmd(['adb','shell','find','/sdcard/Download','-type','f'],'download-files',20)
     exports=[p for p in text.splitlines() if p.endswith('.md')]

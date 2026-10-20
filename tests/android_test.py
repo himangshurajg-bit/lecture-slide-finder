@@ -36,6 +36,11 @@ class AndroidBoundaryTests(unittest.TestCase):
             self.assertTrue(source.is_file(), name+' missing from clean checkout')
         build=(ROOT/'android/tests/run.sh').read_text()
         self.assertIn('rm -rf "$OUT/classes" "$OUT/dex"',build)
+    def test_native_taps_account_for_webview_insets(self):
+        source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/RuntimeChecks.java').read_text()
+        self.assertIn('web.getPaddingLeft()+(float)a.getDouble(0)*scale',source)
+        self.assertIn('web.getPaddingTop()+(float)a.getDouble(1)*scale',source)
+        self.assertIn('WEB_TOUCH_RECEIPT',source)
     def test_signing_not_in_source_and_no_private_media(self):
         self.assertNotIn('storepass ',(ROOT/'android/build-test-apk.sh').read_text())
         self.assertFalse(list((ROOT/'android/app/src/main').rglob('*.mp4')))
