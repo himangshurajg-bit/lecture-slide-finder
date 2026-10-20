@@ -50,3 +50,28 @@ This is measured first-version validation, not a guarantee for all devices or me
   by browser interactions. Screenshots alone cannot demonstrate animation.
 - No physical Android testing, APK, deployment, new speech-model validation,
   licensing choice or changes to transcript/media handling in this refinement.
+
+## Consistent water-glass edges — 20 October 2026
+
+- Extended the existing light liquid-glass design rather than replacing it. Background
+  now has two still caustic-ring shapes. Disclosure, brand/home link, search field,
+  passage cards, note cards and save/seek controls share softly tinted outlines and
+  inset light-catching rims. Primary controls retain dark readable text contrast
+  treatment (white text on teal); body text stays solid, not transparent glass letters.
+- The owner's additional “Also border” refinement is included in the panel, input
+  and control edges. Browser-native video controls are intentionally retained; the
+  browser owns their appearance and accessibility.
+- Tap rings now include the transcript-help disclosure, search surface and home link.
+  Existing reduced-motion handling and bounded ring cleanup apply to all of them.
+  No looping background animation, extra dependency or new GPU filter was introduced.
+- `pnpm build`, 34 unit cases, 4 Python CLI cases and **16 browser tests** passed.
+  Browser coverage includes desktop Chromium, Pixel 7 emulation, 320px layout,
+  live import/search/seek/frame pixels/export, offline shell, data-loss protection,
+  glass borders/inset rims, disclosure keyboard behavior, and motion preference changes.
+- The first new test expected one sample result for “mass”; two sample passages
+  actually contain that word. Corrected the test query to the unique “connects”.
+  No search behavior was changed to satisfy that incorrect assertion.
+- Inspected actual updated desktop/mobile full-page captures. These use synthetic
+  local fixture video/transcripts. Still images show depth/borders, not animation.
+- No physical Android, installation or APK test; no deployment or speech-pipeline
+  changes. Liquid depth is a CSS simulation, not physical refraction.

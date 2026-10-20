@@ -86,3 +86,22 @@ test('small Android-sized viewport keeps controls reachable without horizontal s
  await expect(exportButton).toBeInViewport();
  expect((await exportButton.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });
+
+test('liquid edges cover controls, disclosures and input without sacrificing actions',async({page})=>{
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+ await page.getByRole('button',{name:'Try a sample'}).click();
+ for (const selector of ['.brand','summary','.search-box','.cue .time','.cue .save','.glass','#demo']) {
+  const edge=await page.locator(selector).first().evaluate(el=>{const s=getComputedStyle(el);return {border:s.borderTopWidth,style:s.borderTopStyle,shadow:s.boxShadow};});
+  expect(edge.border).toBe('1px');expect(edge.style).toBe('solid');expect(edge.shadow).toContain('inset');
+ }
+ const disclosure=page.locator('summary');await disclosure.focus();await page.keyboard.press('Enter');await expect(page.locator('details')).toHaveAttribute('open','');
+ await expect(disclosure).toHaveCSS('outline-style','solid');
+ await disclosure.dispatchEvent('pointerdown',{button:0,clientX:20,clientY:20});await expect(disclosure.locator('.water-ripple')).toHaveCount(1);
+ await expect(disclosure.locator('.water-ripple')).toHaveCount(0,{timeout:2000});
+ await page.locator('.search-box').dispatchEvent('pointerdown',{button:0,clientX:20,clientY:20});await expect(page.locator('.search-box .water-ripple')).toHaveCount(1);
+ await page.getByRole('searchbox').fill('connects');await expect(page.locator('.cue')).toHaveCount(1);
+ await page.getByRole('button',{name:'Save note at 00:04'}).click();await expect(page.locator('#notes-count')).toHaveText('1');
+ await page.emulateMedia({reducedMotion:'reduce'});await expect(page.locator('.water-ripple')).toHaveCount(0);
+ await page.locator('summary').dispatchEvent('pointerdown',{button:0,clientX:20,clientY:20});await expect(page.locator('.water-ripple')).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

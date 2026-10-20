@@ -76,8 +76,8 @@ $('#install').addEventListener('click',async()=>{await installPrompt?.prompt();i
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 document.addEventListener('pointerdown', event => {
   if (reducedMotion.matches || event.button !== 0 || !(event.target instanceof Element)) return;
-  const button = event.target.closest<HTMLButtonElement>('button, .button');
-  if (!button || button.disabled) return;
+  const button = event.target.closest<HTMLElement>('button, .button, summary, .search-box, .brand');
+  if (!button || button.matches(':disabled')) return;
   button.querySelector('.water-ripple')?.remove();
   const bounds = button.getBoundingClientRect();
   const ring = document.createElement('span');
