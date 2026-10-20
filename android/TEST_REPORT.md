@@ -227,3 +227,22 @@ The rerun of hosted Android16 run `39486581454` passed `ALL_FRAME_STRESS_CHECKS_
 - Added accessible Previous/Next transcript pages: all matches beyond 150 can now be reached while each render stays bounded. Search/transcript replacement resets the page and notes survive navigation. Build, 45 unit, 26 Python and 34 desktop/Android-emulated browser tests passed locally. Added installed-WebView paging/search/note assertions to the lifecycle instrumentation; compilation passed, execution remains a final integrated gate.
 - The owner-key candidate rebuilt with v2/v3 signatures; certificate SHA256 remains `705cffadb070570ce6248d3aba3f0fc00d6726c4615713fc9750fc863d01b934`. This alone is not release qualification.
 - Final integrated API36 workflow now executes all frame/OCR, handled-error, English/Hindi native-engine, real document import/playback/export, English/Hindi speech-UI, lifecycle/paging and sequential-decoder stress checks, including native saved-file readback. Publication remains withheld until its actual result.
+
+### Integrated API36 run 39495215173: remaining harness failures
+
+The final-code run on `6ae9076` passed both installed speech engines, frame study,
+handled errors, lifecycle/recovery and the 900-frame decoder stress test. Documents
+failed at the test's document-level pointerdown receipt on Chromium's native video
+controls, before its playback assertion. Both speech UI checks actually completed
+recognition, keyword search, seek/frame capture and note saving, then timed out
+while preparing/delivering the second-run cancellation tap. Their short recordings
+can finish and open the existing-note replacement confirmation while the diagnostic
+helper spends seconds sleeping/capturing screenshots. This is not evidence of an
+ASR-quality regression. The dependent export readbacks were not reached.
+
+The corrected harness checks real touch-triggered video playback for UA-shadow
+media controls (all other controls retain the trusted-pointer assertion). Cancellation
+uses the same OS touch path without deliberate sleeps/screenshot capture before it;
+its cancelled-state and previous-note/transcript preservation assertions remain.
+Instrumentation compilation and all 26 Python regressions passed locally. Integrated
+runtime rerun remains required; neither this diagnosis nor compilation qualifies a release.

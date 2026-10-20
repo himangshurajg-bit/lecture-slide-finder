@@ -10,10 +10,11 @@ public class RuntimeChecks extends Instrumentation {
  void check(String code,String name)throws Exception {log("CHECK "+name);String r=js(code);if(!"true".equals(r))throw new Exception(name+": "+r);log("PASS "+name);}
  void await(String code,String name)throws Exception{log("AWAIT "+name);long deadline=System.currentTimeMillis()+180000;while(System.currentTimeMillis()<deadline){if("true".equals(js(code))){log("PASS "+name);return;}Thread.sleep(1000);}throw new Exception("Timeout: "+name);}
  AccessibilityNodeInfo find(AccessibilityNodeInfo n,String name){if(n==null)return null;String t=""+n.getText(),d=""+n.getContentDescription();if((name.equalsIgnoreCase(t)||name.equalsIgnoreCase(d)) && n.isVisibleToUser()){android.graphics.Rect b=new android.graphics.Rect();n.getBoundsInScreen(b);if(!b.isEmpty())return n;}for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo found=find(n.getChild(i),name);if(found!=null)return found;}return null;}
- void tapWeb(String selector)throws Exception{
-  js("document.querySelector("+JSONObject.quote(selector)+").scrollIntoView({block:'center',behavior:'instant'})");Thread.sleep(1000);
+ void tapWeb(String selector)throws Exception{tapWeb(selector,false);}
+ void tapWeb(String selector,boolean immediate)throws Exception{
+  js("document.querySelector("+JSONObject.quote(selector)+").scrollIntoView({block:'center',behavior:'instant'})");if(!immediate)Thread.sleep(1000);
   js("window.__testTouch=[];for(const t of ['pointerdown','pointerup','click'])document.addEventListener(t,e=>window.__testTouch.push([e.type,e.isTrusted,e.clientX,e.clientY,e.target.outerHTML?.slice(0,150),!!e.target.closest("+JSONObject.quote(selector)+")]),{capture:true,once:true})");
-  android.graphics.Bitmap before=getUiAutomation().takeScreenshot();if(before!=null){try(java.io.FileOutputStream file=new java.io.FileOutputStream(new java.io.File(getTargetContext().getExternalFilesDir(null),"web-tap.png"))){before.compress(android.graphics.Bitmap.CompressFormat.PNG,100,file);}before.recycle();}
+  android.graphics.Bitmap before=immediate?null:getUiAutomation().takeScreenshot();if(before!=null){try(java.io.FileOutputStream file=new java.io.FileOutputStream(new java.io.File(getTargetContext().getExternalFilesDir(null),"web-tap.png"))){before.compress(android.graphics.Bitmap.CompressFormat.PNG,100,file);}before.recycle();}
   String raw=js("JSON.stringify((()=>{const e=document.querySelector("+JSONObject.quote(selector)+");const r=e.getBoundingClientRect();const x=r.left+r.width/2,y=r.top+r.height/2;const hit=document.elementFromPoint(x,y);return [x,y,innerWidth,!!hit&&(e===hit||e.contains(hit)),e.disabled,hit?.outerHTML.slice(0,250),visualViewport?.offsetLeft||0,visualViewport?.offsetTop||0,visualViewport?.scale||1,devicePixelRatio]})())");
   log("WEB_TAP "+selector+" "+raw);
   JSONArray a=new JSONArray((String)new JSONTokener(raw).nextValue());
@@ -35,9 +36,13 @@ public class RuntimeChecks extends Instrumentation {
   android.view.MotionEvent up=android.view.MotionEvent.obtain(now,SystemClock.uptimeMillis(),1,x,y,0);up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
   sent=getUiAutomation().injectInputEvent(up,true)&&sent;up.recycle();
   if(!sent)throw new Exception("Web touch injection refused: "+selector);
-  Thread.sleep(1500);
-  check("window.__testTouch.some(e=>e[0]==='pointerdown'&&e[1]&&e[5])","trusted touch reached "+selector);
+  if(!immediate)Thread.sleep(1500);
   log("WEB_TOUCH_RECEIPT "+selector+" "+js("JSON.stringify({events:window.__testTouch,viewport:[innerWidth,innerHeight,devicePixelRatio,visualViewport?.offsetTop,scrollY]})"));
+  // Chromium's built-in media controls can consume pointer events in UA shadow
+  // DOM. For video, require the actual native touch to start decoded playback,
+  // rather than incorrectly requiring a document-level pointerdown receipt.
+  if("#video".equals(selector))await("!document.querySelector('#video').paused && document.querySelector('#video').currentTime>0","trusted video touch starts playback");
+  else check("window.__testTouch.some(e=>e[0]==='pointerdown'&&e[1]&&e[5])","trusted touch reached "+selector);
  }
  boolean scrollNative(AccessibilityNodeInfo n){
   if(n==null)return false;

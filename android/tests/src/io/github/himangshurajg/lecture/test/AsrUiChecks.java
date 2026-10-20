@@ -22,7 +22,7 @@ public final class AsrUiChecks extends RuntimeChecks {
   await("document.querySelectorAll('.cue').length>0 && document.querySelector('#results').textContent.includes('"+keyword+"')","search generated speech transcript");
   js("document.querySelector('.time').click()");await("!document.querySelector('#frame-box').hidden","speech cue seeks and captures actual video");
   js("document.querySelector('.save').click()");check("document.querySelector('#notes-count').textContent==='1'","speech passage saved");
-  tapWeb("#asr-generate");clickNative("Transcribe");await("!document.querySelector('#asr-cancel').hidden","speech cancel visible");tapWeb("#asr-cancel");
+  tapWeb("#asr-generate");clickNative("Transcribe");await("!document.querySelector('#asr-cancel').hidden","speech cancel visible");tapWeb("#asr-cancel",true);
   await("document.querySelector('#asr-status').textContent.includes('cancelled')","active UI speech cancellation");
   check("document.querySelector('#notes-count').textContent==='1' && document.querySelectorAll('.cue').length>0","speech cancel preserves previous notes and result");
   tapWeb("#export");clickNative("Save");
