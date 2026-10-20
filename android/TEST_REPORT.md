@@ -2,6 +2,8 @@
 
 This report describes an unpublished candidate until the final native checks below pass. It does not rename or endorse the earlier debuggable `0.1.0-test.1` APK.
 
+For the latest concise pass/fail matrix and remaining blockers, read [current Android16 status](../docs/ANDROID16_STATUS.md) and [issue #1](https://github.com/himangshurajg-bit/lecture-slide-finder/issues/1). The dated sections below preserve historical observations; an earlier “pending” statement is not the latest run state.
+
 ## Artifact and reproducibility
 
 - Package `io.github.himangshurajg.lecture`; label `Lecture Finder`.
@@ -251,3 +253,12 @@ runtime rerun remains required; neither this diagnosis nor compilation qualifies
 Integrated run 39500287891 passed document import/playback/export, both native speech engines, lifecycle/errors and frame stress. Both speech-screen tests recognized, searched, captured and saved passages, but timed out after attempting to cancel a second short recognition. Logcat shows an additional native window at that stage; source permits a replace-notes confirmation when recognition finishes before the cancellation touch. This is not evidence of a recognition-engine failure.
 
 The revised alternative exports the real completed English/Hindi speech results first, then resets only test session state and opens a separate 601-second public-domain fixture through DocumentsUI. It imports a known prior transcript, saves a passage, requires an active native transcription thread, touches the real Cancel transcription control, and requires cancellation plus exact prior result/note preservation. Native speech export byte assertions remain mandatory. No production code or release assertions are bypassed. Runtime outcome of this alternative is pending, so stable publication remains withheld.
+
+
+## Alternative cancellation run 39502780440 — latest completed result
+
+Test-only `bcb9af451d4f0524737111bbc96de242f916f0b3` passed 27 local Python regressions and clean instrumentation compilation; normal CI `39502780435` passed. The full API36 run `39502780440` **failed overall**. It passed frame study, both engines, documents/document exported bytes, English speech UI, lifecycle/errors, frame stress, and **both English/Hindi speech exported-file byte checks**. English's separate long-media cancellation and exact previous-result/note preservation passed.
+
+Hindi speech UI timed out awaiting cancelled status after earlier recognition/search/frame/notes and export succeeded. Its touch receipt contains pointerdown/up on Cancel without a click, unlike English. This is an observed input/timeout symptom, not a proven production cancellation or ASR root cause. The separate `handled-errors` check returned 1; its cause remains under investigation. A pass in `lifecycle-errors` does not negate this different failed check.
+
+The new workflow exports completed speech before isolating cancellation on separate 601-second public-domain media with seeded prior results, an active native worker, real picker/touch and exact preservation assertions. No production code or mandatory export/preservation assertions were bypassed. Original evidence is retained locally in `android/runtime/isolated-cancellation-evidence`; only concise findings are committed. Track remaining diagnosis and integrated release qualification in [issue #1](https://github.com/himangshurajg-bit/lecture-slide-finder/issues/1). No stable release is qualified by this partial improvement.
