@@ -58,10 +58,16 @@ try:
     text=cmd(['adb','shell','find','/sdcard/Download','-type','f'],'download-files',20)
     exports=[p for p in text.splitlines() if p.endswith('.md')]
     export_pass=False
+    speech_export_pass={'en':False,'hi':False}
     for i,p in enumerate(exports):
         dest=out/('export-'+str(i)+'.md');cmd(['adb','pull',p,str(dest)],'pull-export-'+str(i),10)
+        content=dest.read_text()
+        for language,keyword in [('en','country'),('hi','सागर')]:
+            if keyword in content and '# Study notes — speech-'+language+'.mp4' in content:speech_export_pass[language]=True
         if ('# Visible frame text' in dest.read_text() and 'Mass and acceleration' in dest.read_text()) if focus else 'Mass and acceleration.' in dest.read_text():export_pass=True
     if not remaining and not stress and not hindi:results.append({'check':'export-bytes','passed':export_pass})
+    for language in ('en','hi'):
+        if any(c[0]=='speech-ui-'+language for c in checks):results.append({'check':'speech-export-bytes-'+language,'passed':speech_export_pass[language]})
 except Exception as e:results.append({'check':'setup','passed':False,'error':str(e)})
 finally:
     try:cmd(['adb','logcat','-d','-t','2000'],'final-logcat',15,False)

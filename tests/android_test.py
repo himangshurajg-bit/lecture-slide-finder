@@ -51,6 +51,15 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertAlmostEqual(x,420)
         self.assertAlmostEqual(y,640.64067,places=4)
         self.assertAlmostEqual(y/scale+offset_y,324.0535888671875)
+    def test_speech_ui_requires_search_and_export_readback(self):
+        source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/AsrUiChecks.java').read_text()
+        runner=(ROOT/'android/ci/run-api36.py').read_text()
+        self.assertIn('search generated speech transcript', source)
+        self.assertIn('generated speech Markdown save accepted', source)
+        self.assertIn("'# Study notes — speech-'+language+'.mp4'", runner)
+        self.assertIn("'speech-export-bytes-'+language", runner)
+        # The app exporter uses this exact heading, not the display's panel title.
+        self.assertIn('# Study notes — ', (ROOT/'src/core.ts').read_text())
     def test_signing_not_in_source_and_no_private_media(self):
         self.assertNotIn('storepass ',(ROOT/'android/build-test-apk.sh').read_text())
         self.assertFalse(list((ROOT/'android/app/src/main').rglob('*.mp4')))

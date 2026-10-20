@@ -11,7 +11,7 @@ This report describes an unpublished candidate until the final native checks bel
 - No requested Android permissions, network backend, telemetry or account login. No test media, test instrumentation or signing secrets are bundled.
 - Build with `ANDROID_HOME=... bash android/build-test-apk.sh`. The legacy script/key names are retained; this candidate manifest is non-debuggable.
 
-## Automated regressions
+## Historical pre-ASR automated regressions
 
 - 37 Vitest unit tests passed, including validated local session encoding/recovery.
 - Nine Python transcription-helper and Android source/manifest boundary tests passed.
@@ -19,7 +19,7 @@ This report describes an unpublished candidate until the final native checks bel
 - Production TypeScript/Vite build and Android Java/DEX/resource packaging passed.
 - Browser tests are not native Android tests. Native checks below use a separate, same-signed instrumentation APK, never included in the distributable.
 
-## Genuine Android runtime results
+## Historical Android9 runtime results
 
 A dedicated Android 9/API 28 software emulator, with its older platform WebView, exercised real Android document-provider flows using synthetic lecture fixtures. Native tests found and led to fixes for unsupported `replaceChildren`, `Blob.text`, CSS `aspect-ratio` and reduced-motion listener APIs; these were not caught by current desktop Chromium.
 
@@ -43,13 +43,13 @@ Native Markdown save was completed through the actual Android Save dialog. The r
 
 The automation's receipt assertion timed out after the time-limited emulator expired; the output file was verified separately, not inferred from a click or simulated provider. Native session recovery across WebView reload also passed in earlier retained checks.
 
-Android9 native rotation and transcript-picker cancellation passed with notes preserved. Export cancellation, remaining lifecycle and invalid stored-state checks are being completed in the separate `EdgeChecks` instrumentation runner. This candidate must not be published while those release checks remain unresolved.
+Android9 native rotation and transcript-picker cancellation passed with notes preserved. At this historical checkpoint, export cancellation, remaining lifecycle and invalid stored-state checks were unfinished. The later Android16 lifecycle/error result is recorded below; the candidate remains unpublished while the current release gates are unresolved.
 
 ## Coverage limits
 
 - No physical-phone test, no broad Android-version/device matrix, and no crash-free/all-device guarantee. The software emulator experienced System UI ANRs under resource pressure and multiple time-limited emulator processes expired. These are environmental observations, not proof that all app failures are environmental.
 - The earlier public test APK only imports computer-generated transcripts. The current unpublished candidate adds Android audio decoding/resampling and small bundled English/Hindi Vosk models through a direct JNI bridge. This supersedes the historical Whisper/Assamese investigation below. No broad language-quality claim, Android8–16 runtime compatibility or stable qualification is implied by compilation. Import remains available.
-- Frame capture is the image at a selected time, not OCR or automatic slide recognition.
+- The original matching-frame control captures the image at a selected time. The current candidate additionally provides a sequential gallery and separate bundled English/Hindi visible-text OCR; it does not infer slide meaning or guarantee OCR correctness.
 - Transcripts, notes and search are saved locally. Videos must be selected again after reopening. Important notes should be exported separately; storage failure, clearing app data, uninstalling or device loss can erase local state.
 - The retained self-signed project key has a legacy test certificate name. This is sideload distribution, not Play Store publication or Play App Signing.
 
@@ -214,3 +214,8 @@ The rerun of hosted Android16 run `39486581454` passed `ALL_FRAME_STRESS_CHECKS_
 - A clean-checkout audit also found the runner's `ErrorChecks` instrumentation source absent while stale local compiled classes could conceal that omission. Restored that existing error test, made instrumentation builds clear old classes/dex, and added a source-completeness regression covering every runner-referenced class. All 23 Python tests and a clean instrumentation build passed locally. Native harness-only changes do not make the candidate stable.
 
 - Coordinate audit then identified that MainActivity deliberately applies system-bar insets as WebView padding, but the harness mapped DOM content coordinates from the unpadded screen origin. The test-only mapper now includes top/left padding and content-width scaling, recording mapped coordinates and captured DOM touch receipts plus a pre-touch screenshot. This is a diagnosed harness mismatch, not a production ASR change; actual Hindi workflow result remains pending. The restored clean-checkout source and input mapping regressions pass with the 24-test Python suite, and instrumentation compiles.
+
+## Visual-viewport touch correction (qualification pending)
+
+- Run `39490328253` exposed why adding system-bar padding was insufficient: the intended DOM center `(160, 324.054)` was injected at screen `(360, 857.121)`, but trusted pointer receipts landed at DOM `(137.143, 406.522)` on playback controls. The visual viewport was panned by 80 CSS pixels and the actual density/page scale was 2.625, not the inferred content-width scale of 2.25. This was a harness targeting failure before transcription, not a Hindi recognition result.
+- Test-only change `70d4162` maps layout-viewport client coordinates through the actual `WebView.getScale()` after removing `visualViewport.offsetLeft/offsetTop`. It also requires a trusted pointer-down receipt on the intended target before moving to the OS picker. The 24 Python checks, including reproduction of the observed transform, and clean instrumentation compilation passed. Native run `39492174169` is the qualification attempt; its result is not inferred from those source/build checks.

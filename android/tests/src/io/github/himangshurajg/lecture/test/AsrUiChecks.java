@@ -17,11 +17,16 @@ public final class AsrUiChecks extends RuntimeChecks {
   String text=js("document.querySelector('#results').textContent");log("UI_RESULT "+language+" "+text);
   if("en".equals(language))check("document.querySelector('#results').textContent.toLowerCase().includes('country')","visible English speech keyword");
   else check("document.querySelector('#results').textContent.includes('सागर')","visible Hindi speech keyword (pipeline, not accuracy)");
+  String keyword="en".equals(language)?"country":"सागर";
+  js("const q=document.querySelector('#query');q.value='"+keyword+"';q.dispatchEvent(new Event('input'))");
+  await("document.querySelectorAll('.cue').length>0 && document.querySelector('#results').textContent.includes('"+keyword+"')","search generated speech transcript");
   js("document.querySelector('.time').click()");await("!document.querySelector('#frame-box').hidden","speech cue seeks and captures actual video");
   js("document.querySelector('.save').click()");check("document.querySelector('#notes-count').textContent==='1'","speech passage saved");
   tapWeb("#asr-generate");clickNative("Transcribe");await("!document.querySelector('#asr-cancel').hidden","speech cancel visible");tapWeb("#asr-cancel");
   await("document.querySelector('#asr-status').textContent.includes('cancelled')","active UI speech cancellation");
   check("document.querySelector('#notes-count').textContent==='1' && document.querySelectorAll('.cue').length>0","speech cancel preserves previous notes and result");
+  tapWeb("#export");clickNative("Save");
+  await("document.querySelector('#status').textContent.includes('Notes exported')","generated speech Markdown save accepted");
   log("ALL_ASR_UI_CHECKS_PASSED "+language);result.putString("stream","Installed app speech UI pipeline passed; accuracy separately assessed.\n");finish(Activity.RESULT_OK,result);
  }catch(Throwable e){log("FAIL "+e);result.putString("stream",e.toString());finish(Activity.RESULT_CANCELED,result);}}
 }
