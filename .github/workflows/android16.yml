@@ -51,12 +51,12 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          ram-size: 4096M
+          ram-size: 3072M
           heap-size: 512M
           disk-size: 6G
           disable-linux-hw-accel: false
           emulator-boot-timeout: 240
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel on -cores 2
+          emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -accel on -cores 2
           script: python3 android/ci/run-api36.py --frames-only
       - name: Retain bounded test evidence only (never signing files or APK)
         if: always()

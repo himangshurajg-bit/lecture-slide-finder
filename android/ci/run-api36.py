@@ -4,6 +4,9 @@ import subprocess,pathlib,json,time,hashlib,sys
 focus="--frames-only" in sys.argv
 root=pathlib.Path.cwd(); out=root/'android/runtime/ci-evidence';out.mkdir(parents=True,exist_ok=True)
 results=[]
+# Retain device diagnostics even if the emulator exits during playback.
+live=open(out/'live-logcat.log','wb')
+logger=subprocess.Popen(['adb','logcat','-v','threadtime'],stdout=live,stderr=live)
 def cmd(args,name,timeout=45,required=True):
     try:
         p=subprocess.run(args,capture_output=True,timeout=timeout)
@@ -52,7 +55,9 @@ try:
     results.append({'check':'export-bytes','passed':export_pass})
 except Exception as e:results.append({'check':'setup','passed':False,'error':str(e)})
 finally:
-    cmd(['adb','logcat','-d','-t','2000'],'final-logcat',30,False)
+    try:cmd(['adb','logcat','-d','-t','2000'],'final-logcat',15,False)
+    except Exception as e:results.append({'check':'device-diagnostics','passed':False,'error':str(e)})
+    logger.terminate();live.close()
     report={'scope':('Focused frame-study checks only; other release gates not included. ' if focus else '')+'KVM hosted API36 Google APIs emulator. Not physical-phone or lecture-domain accuracy qualification. CI-only disposable signing; no APK publication.','results':results,'all_covered_checks_passed':bool(results) and all(x['passed'] for x in results)}
     (out/'outcome.json').write_text(json.dumps(report,indent=2))
     print(json.dumps(report,indent=2),flush=True)

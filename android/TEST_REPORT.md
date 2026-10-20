@@ -174,3 +174,10 @@ Machine-readable terminal evidence and selected startup log excerpts are retaine
 - New original six-frame H.264/B-frame fixture includes known English/Hindi text and half-second PTS. Browser OCR actually recognized both expected strings without external HTTP requests in desktop Chromium and Pixel7 browser emulation. Cancellation, editing, search, persistence and Markdown original/source/partial labels passed.
 - Prior hosted API36 run 39478277214: KVM/build/install, handled errors, English/Hindi engine, documents, English speech UI and native export bytes passed. Hindi speech UI fixture selection and lifecycle/error segment failed/timed out. That baseline does not validate the new gallery/OCR. Stable remains withheld.
 - New API36 FrameStudyChecks verifies all six decoder outputs, PTS order/EOS, pre-cancel, real picker, gallery pages, single-frame detail, actual bundled English/Hindi all-frame OCR, saved complete coverage and active cancel. Result must be recorded from an actual runner, not inferred from test compilation.
+
+
+## Frame-study branch native attempt (39483088621)
+- API36 installed candidate/instrumentation; sequential decoder returned all six original B-frame fixture frames with expected PTS/EOS. Pre-cancellation passed.
+- Emulator connection disappeared after choosing that fixture in the system picker, before gallery/OCR assertions. Full native feature is not qualified.
+- Retrying a changed rendering configuration (Vulkan disabled, 3GiB guest vs 4GiB) with live diagnostic capture. This is environment diagnosis, not proof of an application fix.
+- Clean-host Python CI found an ignored runtime-only fixture path; regression now reads the same retained public fixture from tracked `android/ci/fixtures/`.

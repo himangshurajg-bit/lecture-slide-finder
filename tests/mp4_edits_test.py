@@ -35,5 +35,5 @@ public class Check { public static void main(String[] a)throws Exception {try(Ra
     def test_corrupt_size_is_bounded(self):self.check(struct.pack('>I4s',1000000,b'moov'),'malformed')
     def test_truncated_size_is_bounded(self):self.check(fixture()[:-2],'malformed')
     def test_real_retained_aac_fixture(self):
-        self.check((ROOT/'android/runtime/release-fixtures/en-clip.m4a').read_bytes(),'1024')
+        self.check((ROOT/'android/ci/fixtures/en-clip.m4a').read_bytes(),'1024')
 if __name__=='__main__':unittest.main()
