@@ -7,4 +7,5 @@
  <instrumentation android:name=".NativeAbortChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Native model and cancellation checks" />
  <instrumentation android:name=".DecodeChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Public audio fixture diagnostic" />
  <instrumentation android:name=".AsrUiChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Installed speech UI checks" />
+ <instrumentation android:name=".ErrorChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Installed invalid-media recovery checks" />
 </manifest>

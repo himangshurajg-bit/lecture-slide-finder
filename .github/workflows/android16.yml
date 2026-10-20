@@ -23,6 +23,10 @@ jobs:
           test -e /dev/kvm
           sudo chmod a+rw /dev/kvm
           ls -l /dev/kvm
+      - name: Put Android SDK command-line tools on PATH
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+        with:
+          log-accepted-android-sdk-licenses: false
       - name: Install required SDK toolchain
         run: |
           yes | sdkmanager --licenses >/dev/null || true

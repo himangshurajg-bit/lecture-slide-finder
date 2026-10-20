@@ -30,7 +30,7 @@ try:
     for name,path in files.items():
         cmd(['adb','push',str(path),'/sdcard/Download/'+name],'push-'+name)
         cmd(['adb','shell','am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Download/'+name],'scan-'+name)
-    checks=[('engine-en','AsrChecks','PASS NATIVE_ASR_PIPELINE_AND_PRE_CANCEL en',['-e','language','en']),('engine-hi','AsrChecks','PASS NATIVE_ASR_PIPELINE_AND_PRE_CANCEL hi',['-e','language','hi','-e','fixture','hi-full.m4a']),('documents','RuntimeChecks','ALL_CHECKS_PASSED',[]),('speech-ui-en','AsrUiChecks','ALL_ASR_UI_CHECKS_PASSED en',['-e','language','en']),('speech-ui-hi','AsrUiChecks','ALL_ASR_UI_CHECKS_PASSED hi',['-e','language','hi']),('lifecycle-errors','EdgeChecks','ALL_EDGE_CHECKS_PASSED',[])]
+    checks=[('handled-errors','ErrorChecks','ALL_ERROR_CHECKS_PASSED',[]),('engine-en','AsrChecks','PASS NATIVE_ASR_PIPELINE_AND_PRE_CANCEL en',['-e','language','en']),('engine-hi','AsrChecks','PASS NATIVE_ASR_PIPELINE_AND_PRE_CANCEL hi',['-e','language','hi','-e','fixture','hi-full.m4a']),('documents','RuntimeChecks','ALL_CHECKS_PASSED',[]),('speech-ui-en','AsrUiChecks','ALL_ASR_UI_CHECKS_PASSED en',['-e','language','en']),('speech-ui-hi','AsrUiChecks','ALL_ASR_UI_CHECKS_PASSED hi',['-e','language','hi']),('lifecycle-errors','EdgeChecks','ALL_EDGE_CHECKS_PASSED',[])]
     for name,klass,marker,extras in checks:
         cmd(['adb','shell','am','force-stop','io.github.himangshurajg.lecture'],name+'-stop',10,False)
         start=time.monotonic()
