@@ -1,6 +1,12 @@
 # Android 1.00.0.00 stable — candidate validation
 
-This report describes an unpublished candidate until the final native checks below pass. It does not rename or endorse the earlier debuggable `0.1.0-test.1` APK.
+## Final Android 16 qualification — 2026-10-20 UTC
+
+[Full native run 39504829180](https://github.com/himangshurajg-bit/lecture-slide-finder/actions/runs/39504829180) passed all 12 required checks on tested revision `900d8777b945913a07253b97c7c5b8c0aea71a72`: frame-study, handled-errors, engine-en, engine-hi, documents, speech-ui-en, speech-ui-hi, lifecycle-errors, frame-stress, export-bytes, speech-export-bytes-en and speech-export-bytes-hi. [Normal CI 39504829298](https://github.com/himangshurajg-bit/lecture-slide-finder/actions/runs/39504829298) also passed. Native export contents were read back. Both languages passed active cancellation and exact previous-transcript/note preservation. ErrorChecks executed after its instrumentation registration repair.
+
+This qualifies the covered workflows in hosted Android 16/API36 KVM emulation with disposable CI signing, not physical-phone performance, broad language accuracy or older Android versions. The distribution APK retains the original signer and unchanged production assets. Historical failures below remain evidence of earlier attempts, not current blockers.
+
+This report retains historical candidate observations. The stable release does not rename or endorse the earlier debuggable `0.1.0-test.1` APK.
 
 For the latest concise pass/fail matrix and remaining blockers, read [current Android16 status](../docs/ANDROID16_STATUS.md) and [issue #1](https://github.com/himangshurajg-bit/lecture-slide-finder/issues/1). The dated sections below preserve historical observations; an earlier “pending” statement is not the latest run state.
 

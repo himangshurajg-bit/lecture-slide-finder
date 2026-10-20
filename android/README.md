@@ -1,3 +1,7 @@
+# Current stable APK
+
+[Download 1.00.0.00 stable](https://github.com/himangshurajg-bit/lecture-slide-finder/releases/tag/android-v1.00.0.00-stable). The full Android16 emulator suite passed all 12 checks; see [current status](../docs/ANDROID16_STATUS.md) for scope and limits. Historical candidate instructions below are retained for reproducibility.
+
 # Lecture Finder — Android APK
 
 This is an Android Activity containing the locally bundled production web UI. It starts offline without a server or laptop. It preserves the light liquid-glass UI, touch ripples and reduced-motion support. It is **not** a remotely hosted website. The local unpublished candidate now adds Android audio decoding and bundled English/Hindi Vosk recognition. The first stable release is scoped to Android 16/API 36. Actual installed-app workflows, recognition quality, cancellation and lifecycle checks on Android 16 remain release gates; other Android versions are deferred until after that first release, not considered tested. Assamese support was removed from this release at the owner’s request; no Assamese model is bundled.

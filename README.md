@@ -4,9 +4,9 @@ A local-first lecture player with transcript search, a video-frame preview and t
 
 ![Desktop interface](docs/desktop-chromium.png)
 
-## Current source and unpublished Android candidate
+## Android 16 stable release
 
-The Android16 candidate is **not yet a stable release**. See the [current capabilities, test matrix and known limits](docs/ANDROID16_STATUS.md) and [open release blocker](https://github.com/himangshurajg-bit/lecture-slide-finder/issues/1). This separates passed speech/export workflows from the remaining Hindi cancellation and handled-error checks.
+[Download the signed 1.00.0.00 stable APK](https://github.com/himangshurajg-bit/lecture-slide-finder/releases/tag/android-v1.00.0.00-stable). All 12 covered Android16 emulator qualification checks passed, along with normal CI. See the [test matrix and known limits](docs/ANDROID16_STATUS.md). Physical-phone performance and older-version compatibility remain unqualified.
 
 - Open a video from your device; H.264/AAC MP4 is recommended. Playback depends on the browser's codecs.
 - Import timestamped **SRT, WebVTT or JSON**. The Android candidate can generate speech transcripts offline on the phone in English or Hindi; the optional **local Python speech-recognition tool** remains available for computer/browser workflows.
