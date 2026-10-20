@@ -5,6 +5,7 @@ SDK=${ANDROID_HOME:-/home/user/workspace/.android-sdk}
 BT=$SDK/build-tools/35.0.0
 JAR=$SDK/platforms/android-35/android.jar
 OUT=android/runtime/instrumentation
+rm -rf "$OUT/classes" "$OUT/dex" # removed test classes must not survive a rebuild
 mkdir -p "$OUT/classes" "$OUT/dex"
 "$BT/aapt" package -f -M android/tests/AndroidManifest.xml -A "${CHECK_FIXTURES:-android/runtime/release-fixtures}" -I "$JAR" -F "$OUT/raw.apk"
 javac --release 8 -classpath "$JAR" -d "$OUT/classes" $(find android/tests/src -name '*.java')

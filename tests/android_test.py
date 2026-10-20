@@ -1,5 +1,6 @@
 """Static Android boundary/packaging regression tests, not emulator tests."""
 import pathlib
+import re
 import unittest
 import xml.etree.ElementTree as ET
 ROOT=pathlib.Path(__file__).resolve().parents[1]
@@ -28,6 +29,13 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertIn("worker-src 'self'",self.java)
         self.assertIn('!HOST.equals(u.getHost())',self.java)
         self.assertNotIn('connect-src *',self.java)
+    def test_native_ci_references_only_present_instrumentation(self):
+        runner=(ROOT/'android/ci/run-api36.py').read_text()
+        for name in set(re.findall(r"'([A-Z][A-Za-z]+Checks)'", runner)):
+            source=ROOT/'android/tests/src/io/github/himangshurajg/lecture/test'/(name+'.java')
+            self.assertTrue(source.is_file(), name+' missing from clean checkout')
+        build=(ROOT/'android/tests/run.sh').read_text()
+        self.assertIn('rm -rf "$OUT/classes" "$OUT/dex"',build)
     def test_signing_not_in_source_and_no_private_media(self):
         self.assertNotIn('storepass ',(ROOT/'android/build-test-apk.sh').read_text())
         self.assertFalse(list((ROOT/'android/app/src/main').rglob('*.mp4')))
