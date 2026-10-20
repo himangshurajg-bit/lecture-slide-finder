@@ -31,9 +31,12 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertNotIn('connect-src *',self.java)
     def test_native_ci_references_only_present_instrumentation(self):
         runner=(ROOT/'android/ci/run-api36.py').read_text()
+        manifest=ET.parse(ROOT/'android/tests/AndroidManifest.xml').getroot()
+        registered={n.get(ANDROID+'name') for n in manifest.findall('instrumentation')}
         for name in set(re.findall(r"'([A-Z][A-Za-z]+Checks)'", runner)):
             source=ROOT/'android/tests/src/io/github/himangshurajg/lecture/test'/(name+'.java')
             self.assertTrue(source.is_file(), name+' missing from clean checkout')
+            self.assertIn('.'+name, registered, name+' missing instrumentation registration')
         build=(ROOT/'android/tests/run.sh').read_text()
         self.assertIn('rm -rf "$OUT/classes" "$OUT/dex"',build)
     def test_native_taps_map_visual_viewport_at_actual_page_scale(self):
@@ -72,6 +75,9 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertIn("duration>590", source)
         self.assertIn('No active transcription before cancel', source)
         self.assertIn('Cancellation changed previous transcript or notes', source)
+        self.assertIn('tapWeb("#asr-cancel");', source)
+        self.assertIn('trusted cancel click dispatched', source)
+        self.assertNotIn('tapWeb("#asr-cancel",true)', source)
         import hashlib, json
         fixtures=ROOT/'android/ci/fixtures'
         sums=json.loads((fixtures/'SHA256SUMS.json').read_text())

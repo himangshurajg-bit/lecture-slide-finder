@@ -41,7 +41,11 @@ public final class AsrUiChecks extends RuntimeChecks {
   await("!document.querySelector('#asr-cancel').hidden","speech cancel visible on long media");
   java.lang.reflect.Field running=activity.getClass().getDeclaredField("asrThread");running.setAccessible(true);
   if(running.get(activity)==null)throw new Exception("No active transcription before cancel");
-  tapWeb("#asr-cancel",true);
+  // Long media leaves time for scroll/compositor settling. Immediate injection
+  // produced trusted down/up but no click in Hindi; require the click receipt
+  // separately so a missed gesture is not misreported as an ASR cancellation bug.
+  tapWeb("#asr-cancel");
+  check("window.__testTouch.some(e=>e[0]==='click'&&e[1]&&e[5])","trusted cancel click dispatched");
   await("document.querySelector('#asr-status').textContent.includes('cancelled')","active UI speech cancellation");
   if(!before.equals(js("JSON.stringify([document.querySelector('#results').textContent,document.querySelector('#notes').textContent])")))throw new Exception("Cancellation changed previous transcript or notes");
   check("document.querySelector('#notes-count').textContent==='1' && document.querySelectorAll('.cue').length>0","speech cancel preserves previous notes and result");

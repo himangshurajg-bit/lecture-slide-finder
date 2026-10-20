@@ -2,6 +2,7 @@
  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
  <application android:label="Lecture runtime checks" />
  <instrumentation android:name=".RuntimeChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Lecture runtime checks" />
+ <instrumentation android:name=".ErrorChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Handled native input errors and recovery checks" />
  <instrumentation android:name=".EdgeChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Lecture lifecycle checks" />
  <instrumentation android:name=".AsrChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Native offline ASR checks" />
  <instrumentation android:name=".NativeAbortChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Native model and cancellation checks" />
