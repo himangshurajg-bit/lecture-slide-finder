@@ -4,13 +4,13 @@ A local-first lecture player with transcript search, a video-frame preview and t
 
 ![Desktop interface](docs/desktop-chromium.png)
 
-## What works in v0.1
+## Current source and unpublished Android candidate
 
 - Open a video from your device; H.264/AAC MP4 is recommended. Playback depends on the browser's codecs.
-- Import timestamped **SRT, WebVTT or JSON**, or generate JSON using the included **local Python speech-recognition tool**.
+- Import timestamped **SRT, WebVTT or JSON**. The Android candidate can generate speech transcripts offline on the phone in English or Hindi; the optional **local Python speech-recognition tool** remains available for computer/browser workflows.
 - Search transcript words (case-insensitive, all query words must occur in a passage). This is keyword search, not semantic AI search.
 - Tap a timestamp to seek the video and capture its frame nearby. It shows the slide **if the slide is visible at that moment**; the separate candidate frame-study workflow adds visible-text OCR, not semantic slide recognition, deck extraction or slide-change detection.
-- Save passages and export a Markdown file with timestamps. Notes stay in the tab; **export before closing**. Replacing a lecture/transcript warns before clearing selected notes.
+- Save passages and export Markdown with timestamps. Current source restores validated transcripts, notes and search locally; select the same video again after reopening. Replacing a lecture/transcript warns before clearing selected notes. Export a separate backup; storage can fail or be cleared.
 - Responsive touch-friendly layout, labelled controls, keyboard focus, reduced-motion support and a cacheable PWA shell.
 
 ## Run locally
@@ -77,11 +77,11 @@ Imports are limited to 5 MiB and 20,000 nonempty segments; time ranges must be f
 
 ## Privacy and safety
 
-- Imported videos use browser object URLs. Transcripts and notes are in memory, not uploaded, stored in a database or synchronized.
+- Imported videos use browser object URLs and are not uploaded. Current source saves validated transcript, notes and search in local storage; frame analysis is saved separately. Nothing synchronizes to a server.
 - The service worker caches public app assets only, not imported blobs, transcripts or notes. Clear site data to remove the cached shell.
 - The browser still requests the app from wherever it is hosted; speech model/dependency installation contacts their distributors. “Local-first” does not mean zero network requests during installation.
 - User transcript text is rendered as text, not executable HTML. Markdown exports escape HTML/formatting characters. Keep media dependencies/browser updated and only open files you trust.
-- Reopening the tab does not restore media or notes. Export selected notes before closing. No private lecture samples are included.
+- Reopening restores saved text when local storage is available, not access to the video. Select the same video again. Export important notes before clearing app/site data. No private lecture samples are included.
 
 ## Checks
 
@@ -108,12 +108,7 @@ Original implementation and fixture artwork. Dependency credits/license metadata
 
 ## Light liquid-glass interface
 
-The interface uses a light pearl/mint background, translucent panels, rounded rim
-highlights and a still droplet accent. Brief tap rings and eased control/panel
-transitions add fluidity without continuous animation, canvas effects or new UI
-dependencies. System **Reduce motion** disables these animations and tap rings.
-Mobile uses a smaller backdrop blur. These are CSS depth effects, not physical
-refraction. Android evidence remains Chromium emulation, not a real-phone test.
+The current interface uses a light pearl/mint background, translucent panels, rounded rim highlights, ambient lighting, spring/elastic touch responses and varied transitions. Motion intensity can be reduced; system **Reduce motion** disables nonessential effects. These are rendered glass/depth effects, not physical refraction. Browser screenshots establish browser appearance; hosted Android16 runtime screenshots/tests do not establish physical-phone speed or battery performance.
 
 ## Android APK (test build)
 
