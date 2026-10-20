@@ -64,10 +64,24 @@ $<HTMLInputElement>('#transcript-file').addEventListener('change',async event=>{
 });
 $('#demo').addEventListener('click',()=>{++loadGeneration;setTranscript([{start:0,end:4,text:'A force changes the motion of an object.'},{start:4,end:8,text:'Newton’s second law connects force, mass and acceleration.'},{start:8,end:12,text:'Double the force and the acceleration doubles, if mass stays the same.'}], 'Sample transcript (illustrative, no video attached)');});
 $('#query').addEventListener('input',render);
-$('#export').addEventListener('click',()=>{const url=URL.createObjectURL(new Blob([notesMarkdown(fileName,notes)],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='lecture-notes.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);status('Notes exported. Keep the download before closing this tab.');});
+// The bundled Android host uses the system document saver, not unsupported blob downloads.
+const androidHost = location.origin === 'https://appassets.androidplatform.net';
+window.addEventListener('lecture-export-result', event => {
+  if (androidHost && event instanceof CustomEvent && typeof event.detail === 'string')
+    status(event.detail, event.detail.startsWith('Export failed') || event.detail.startsWith('Cannot'));
+});
+$('#export').addEventListener('click',()=>{
+  const markdown=notesMarkdown(fileName,notes);
+  if (androidHost) {
+    status('Choose where to save your notes.');
+    if(window.prompt('lecture-export-v1',markdown)!=='pending') status('Export did not start. Your notes are still here.',true);
+    return;
+  }
+  const url=URL.createObjectURL(new Blob([markdown],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='lecture-notes.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);status('Notes exported. Keep the download before closing this tab.');
+});
 window.addEventListener('keydown',e=>{if(e.key==='/'&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLTextAreaElement)){e.preventDefault();$('#query').focus();}});
 window.addEventListener('beforeunload',e=>{if(notes.length){e.preventDefault();e.returnValue='';}});
-if('serviceWorker'in navigator)window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});
+if(!androidHost && 'serviceWorker'in navigator)window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});
 let installPrompt: (Event & {prompt:()=>Promise<void>})|null=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e as typeof installPrompt;$('#install').hidden=false;});
 $('#install').addEventListener('click',async()=>{await installPrompt?.prompt();installPrompt=null;$('#install').hidden=true;});

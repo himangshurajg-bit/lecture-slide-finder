@@ -7,3 +7,6 @@ test-results/
 .local/
 *.transcript.json
 .env*
+android/build/
+*.keystore
+*.jks

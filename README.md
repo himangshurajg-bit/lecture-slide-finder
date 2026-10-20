@@ -1,6 +1,6 @@
 # Lecture — slide finder
 
-A local-first lecture player with transcript search, a video-frame preview and timestamped study notes. A minimal, frosted-glass interface for desktop and Android browsers. No account, paid AI API or media-upload server.
+A local-first lecture player with transcript search, a video-frame preview and timestamped study notes. A minimal, frosted-glass interface for desktop and Android browsers, plus a bundled Android test APK. No account, paid AI API or media-upload server.
 
 ![Desktop interface](docs/desktop-chromium.png)
 
@@ -50,13 +50,13 @@ uv run tools/transcribe.py lecture.mp4 --model base --language hi --output lectu
 
 The tool refuses to overwrite an existing transcript unless `--force` is supplied, and never allows output to replace the media input. **Review recognition carefully**: accents, noise, technical terms and even synthetic speech can be misheard. A successful run is not proof of transcript accuracy. PyAV is pinned to 16.1.0 for compatibility with faster-whisper 1.2.1. FFmpeg is useful for converting unsupported media but is not a separate CLI prerequisite for this PyAV-based tool.
 
-### Android
+### Android browser/PWA
 
-The app is an **Android-compatible responsive web/PWA**, **not a native APK**. Open it in a current Chrome browser from a static HTTPS host. Use its install prompt (when offered) or Chrome's **Add to Home screen / Install app** menu. After a complete online visit the app shell can reopen offline. Pick your video and transcript from the device's file picker.
+The web version is an **Android-compatible responsive web/PWA**. A separate [bundled test APK](#android-apk-test-build) is also available. Open it in a current Chrome browser from a static HTTPS host. Use its install prompt (when offered) or Chrome's **Add to Home screen / Install app** menu. After a complete online visit the app shell can reopen offline. Pick your video and transcript from the device's file picker.
 
 Automatic speech recognition currently runs on a separate computer via the Python tool, **not on Android**. Transfer its JSON file yourself and import it. Existing SRT/VTT files work directly on Android. Local `localhost` works on the development computer; `http://<computer-LAN-IP>` may open on a phone with `pnpm dev --host 0.0.0.0`, but installation/offline service workers require a secure context (HTTPS, or the device's own localhost). Only expose the development server on a trusted network.
 
-Android tests use Playwright's Pixel 7 emulation in Chromium. They do **not** establish physical Android device, vendor file-picker, low-memory playback or installation compatibility. No APK or Play Store release is included.
+Browser tests use Playwright's Pixel 7 emulation in Chromium. They do **not** establish physical Android device, vendor file-picker, low-memory playback or APK installation compatibility. The APK is a separate prerelease test build; no Play Store release is included.
 
 ## Transcript formats
 
@@ -114,3 +114,9 @@ transitions add fluidity without continuous animation, canvas effects or new UI
 dependencies. System **Reduce motion** disables these animations and tap rings.
 Mobile uses a smaller backdrop blur. These are CSS depth effects, not physical
 refraction. Android evidence remains Chromium emulation, not a real-phone test.
+
+## Android APK (test build)
+
+The repository now also includes a **bundled, offline Android app**, not a link to a development server. See [Android installation, build and privacy notes](android/README.md). Android 8.0+ is declared, with an up-to-date Android System WebView required. Only emulator/device versions actually exercised in the test report should be treated as tested.
+
+The APK imports videos/transcripts through Android's document picker and exports Markdown through **Save as**. No Internet or broad storage permission is requested. Automatic transcription remains a computer-side tool; there is no on-phone speech recognition or slide OCR. Export your notes before closing or switching lectures. The APK is a prerelease signed **test build**, not a Play Store/production release.
