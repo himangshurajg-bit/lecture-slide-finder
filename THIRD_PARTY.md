@@ -1,0 +1,56 @@
+# Third-party dependencies
+
+This app uses upstream packages rather than copying a competitor implementation. Original synthetic slide fixture, icons and app UI were created for this repository. Dependencies keep their own licenses; this file does not relicense them.
+
+## Web build and test dependencies
+
+Metadata from `pnpm licenses list --json` for the locked install. Full upstream license texts are distributed in the installed packages.
+
+| Package | Version | License |
+| --- | --- | --- |
+| @playwright/test | 1.64.1 | Apache-2.0 |
+| detect-libc | 2.1.2 | Apache-2.0 |
+| expect-type | 1.4.0 | Apache-2.0 |
+| playwright | 1.64.1 | Apache-2.0 |
+| playwright-core | 1.64.1 | Apache-2.0 |
+| typescript | 5.9.3 | Apache-2.0 |
+| source-map-js | 1.2.2 | BSD-3-Clause |
+| picocolors | 1.1.1 | ISC |
+| @jridgewell/resolve-uri | 3.1.2 | MIT |
+| @jridgewell/sourcemap-codec | 1.6.0 | MIT |
+| @jridgewell/trace-mapping | 0.3.31 | MIT |
+| @oxc-project/types | 0.154.0 | MIT |
+| @rolldown/binding-linux-x64-gnu | 1.2.14 | MIT |
+| @rolldown/pluginutils | 1.0.1 | MIT |
+| @types/chai | 5.2.3 | MIT |
+| @types/deep-eql | 4.0.2 | MIT |
+| @types/estree | 1.0.9 | MIT |
+| @vitest/mocker | 5.0.5 | MIT |
+| @vitest/spy | 5.0.5 | MIT |
+| assertion-error | 2.0.1 | MIT |
+| chai | 6.3.0 | MIT |
+| es-module-lexer | 2.3.2 | MIT |
+| estree-walker | 3.0.3 | MIT |
+| fdir | 6.5.0 | MIT |
+| magic-string | 1.4.3 | MIT |
+| nanoid | 3.3.20 | MIT |
+| obug | 3.0.0 | MIT |
+| picomatch | 4.0.7 | MIT |
+| postcss | 8.5.31 | MIT |
+| rolldown | 1.2.14 | MIT |
+| std-env | 4.3.0 | MIT |
+| tinybench | 6.2.2 | MIT |
+| tinyexec | 1.3.1 | MIT |
+| tinyglobby | 0.2.17 | MIT |
+| vite | 8.3.4 | MIT |
+| vitest | 5.0.5 | MIT |
+| why-is-node-running | 3.2.1 | MIT |
+| lightningcss | 1.33.0 | MPL-2.0 |
+| lightningcss-linux-x64-gnu | 1.33.0 | MPL-2.0 |
+
+## Optional speech tool
+
+- [faster-whisper](https://github.com/SYSTRAN/faster-whisper) 1.2.1: MIT.
+- [PyAV](https://github.com/PyAV-Org/PyAV) 16.1.0: BSD-3-Clause; packaged FFmpeg components have their own licenses.
+- [huggingface-hub](https://github.com/huggingface/huggingface_hub) 0.36.0: Apache-2.0.
+- Downloaded speech models and transitive binary dependencies have their own licenses and model cards. Check those before redistribution; no model weights are committed in this repository.
