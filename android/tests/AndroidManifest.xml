@@ -8,4 +8,5 @@
  <instrumentation android:name=".DecodeChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Public audio fixture diagnostic" />
  <instrumentation android:name=".AsrUiChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="Installed speech UI checks" />
  <instrumentation android:name=".FrameStudyChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="All-frame traversal and offline visible-text checks" />
+ <instrumentation android:name=".FrameStressChecks" android:targetPackage="io.github.himangshurajg.lecture" android:label="One-minute sequential frame stress checks" />
 </manifest>

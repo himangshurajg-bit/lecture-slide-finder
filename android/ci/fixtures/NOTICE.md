@@ -7,3 +7,5 @@ These are test fixtures, not private lecture recordings.
 - `hi-clip.m4a`, `hi-full.m4a`, `speech-hi.mp4`: AAC adaptations (short/full, MP4 with synthetic background) of Google FLEURS Hindi dev example 1602, `10003386135529782184.wav`. Dataset: https://huggingface.co/datasets/google/fleurs ; dev metadata: https://huggingface.co/datasets/google/fleurs/blob/main/data/hi_in/dev.tsv . Google FLEURS, CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ . Speech content is about Majorcan food, not a lecture.
 
 Successful recognition of these short samples is pipeline evidence, not representative lecture accuracy. No Assamese fixture or recognition is included.
+
+- `frame-stress.mp4`: original synthetic six-frame physics slide repeated/re-encoded as 60 seconds, 15 fps, 900 H.264 frames. This tests sequential decoder resource behavior, not longer-lecture OCR accuracy. Generated using ffmpeg `-stream_loop -1 -i tests/fixtures/frame-study.mp4 -t 60 -r 15 -c:v libx264 -preset fast -crf 26 -pix_fmt yuv420p -an`.
