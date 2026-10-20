@@ -4,8 +4,8 @@ import android.app.*;import android.content.*;import android.content.pm.Activity
 public final class EdgeChecks extends RuntimeChecks {
  String segment="all";
  @Override public void onCreate(Bundle args){segment=args.getString("segment","all");super.onCreate(args);}
- void connect()throws Exception { Intent i=new Intent().setClassName(getTargetContext(),"io.github.himangshurajg.lecture.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);activity=startActivitySync(i);java.lang.reflect.Field f=activity.getClass().getDeclaredField("web");f.setAccessible(true);web=(WebView)f.get(activity);await("!!document.querySelector('#demo')","edge UI launched"); }
- void back()throws Exception{try(android.os.ParcelFileDescriptor command=getUiAutomation().executeShellCommand("input keyevent 4");java.io.InputStream input=new android.os.ParcelFileDescriptor.AutoCloseInputStream(command)){while(input.read()!=-1){}}Thread.sleep(2000);}
+ void connect()throws Exception { log("CONNECT edge activity");Intent i=new Intent().setClassName(getTargetContext(),"io.github.himangshurajg.lecture.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);activity=startActivitySync(i);java.lang.reflect.Field f=activity.getClass().getDeclaredField("web");f.setAccessible(true);web=(WebView)f.get(activity);await("!!document.querySelector('#demo')","edge UI launched"); }
+ void back()throws Exception{long t=SystemClock.uptimeMillis();getUiAutomation().injectInputEvent(new android.view.KeyEvent(t,t,android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_BACK,0),true);getUiAutomation().injectInputEvent(new android.view.KeyEvent(t,t+50,android.view.KeyEvent.ACTION_UP,android.view.KeyEvent.KEYCODE_BACK,0),true);Thread.sleep(2000);}
  void cancelDocument()throws Exception {
   // DocumentsUI may consume the first Back to hide its filename keyboard.
   // A second Back is appropriate only while that external picker still owns the window.

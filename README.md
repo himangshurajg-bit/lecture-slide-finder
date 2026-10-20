@@ -9,7 +9,7 @@ A local-first lecture player with transcript search, a video-frame preview and t
 - Open a video from your device; H.264/AAC MP4 is recommended. Playback depends on the browser's codecs.
 - Import timestamped **SRT, WebVTT or JSON**, or generate JSON using the included **local Python speech-recognition tool**.
 - Search transcript words (case-insensitive, all query words must occur in a passage). This is keyword search, not semantic AI search.
-- Tap a timestamp to seek the video and capture its frame nearby. It shows the slide **if the slide is visible at that moment**; there is no automatic slide recognition, OCR, deck extraction or slide-change detection yet.
+- Tap a timestamp to seek the video and capture its frame nearby. It shows the slide **if the slide is visible at that moment**; the separate candidate frame-study workflow adds visible-text OCR, not semantic slide recognition, deck extraction or slide-change detection.
 - Save passages and export a Markdown file with timestamps. Notes stay in the tab; **export before closing**. Replacing a lecture/transcript warns before clearing selected notes.
 - Responsive touch-friendly layout, labelled controls, keyboard focus, reduced-motion support and a cacheable PWA shell.
 
@@ -99,7 +99,7 @@ See [docs/VALIDATION.md](docs/VALIDATION.md) for the measured validation and lim
 ## Structure and credits
 
 - `src/core.ts`: bounded parsing, literal search and safe Markdown export.
-- `src/main.ts` and `src/style.css`: native DOM UI, playback and frame capture; no UI runtime dependencies.
+- `src/main.ts` and `src/style.css`: native DOM UI, playback and frame capture; Tesseract.js supplies the separate offline visible-text OCR.
 - `public/`: manifest, icons and app-shell service worker.
 - `tools/transcribe.py`: optional local speech transcription.
 - `tests/`: unit cases and browser integration checks.
@@ -119,7 +119,7 @@ refraction. Android evidence remains Chromium emulation, not a real-phone test.
 
 The repository now also includes a **bundled, offline Android app**, not a link to a development server. See [Android installation, build and privacy notes](android/README.md). Android 8.0+ is declared, with an up-to-date Android System WebView required. Only emulator/device versions actually exercised in the test report should be treated as tested.
 
-The APK imports videos/transcripts through Android's document picker and exports Markdown through **Save as**. No Internet or broad storage permission is requested. The older public test build has no on-phone recognition. The current unpublished source candidate adds bundled offline English/Hindi Vosk recognition, playback speed and selected-passage repeat; it has not qualified for stable publication. There is no automatic slide OCR. Android 16/API 36 is the first stable-release validation target; other Android versions are deferred. Export your notes before closing or switching lectures. The APK is a prerelease signed **test build**, not a Play Store/production release.
+The APK imports videos/transcripts through Android's document picker and exports Markdown through **Save as**. No Internet or broad storage permission is requested. The older public test build has no on-phone recognition. The current unpublished source candidate adds bundled offline English/Hindi Vosk recognition, playback speed and selected-passage repeat; it has not qualified for stable publication. The separate frame-study candidate adds visible-text OCR as described below; its focused six-frame English/Hindi fixture workflow passed on an Android16 emulator, not a long lecture or physical phone. Android 16/API 36 is the first stable-release validation target; other Android versions are deferred. Export your notes before closing or switching lectures. The APK is a prerelease signed **test build**, not a Play Store/production release.
 
 ## Frame gallery and visible slide points (candidate)
 

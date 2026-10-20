@@ -27,7 +27,7 @@ Transcripts, selected notes and search text are validated and saved locally on t
 
 ## Build from source (Linux)
 
-Requirements: Node 22.12+/pnpm 11.9.0, JDK 17+, Python 3, `zip`, Android SDK platform **35** and Build Tools **35.0.0**. Android SDK terms/installations are the builder's responsibility. Existing project dependencies remain pinned in `pnpm-lock.yaml`; no extra JavaScript library was added. The unpublished ASR candidate requires Android NDK r27c to build a small C/JNI bridge for arm64-v8a, armeabi-v7a, x86 and x86_64. Vosk Android 0.3.75 and the small English/Hindi models are fetched at build time with pinned SHA-256 checks. The app uses no JNA or remote model downloads. Model/runtime notices are in `android/licenses/`.
+Requirements: Node 22.12+/pnpm 11.9.0, JDK 17+, Python 3, `zip`, Android SDK platform **35** and Build Tools **35.0.0**. Android SDK terms/installations are the builder's responsibility. Dependencies remain pinned in `pnpm-lock.yaml`; the frame-study candidate adds Tesseract.js and bundled offline OCR assets (about 13 MiB uncompressed). The unpublished ASR candidate requires Android NDK r27c to build a small C/JNI bridge for arm64-v8a, armeabi-v7a, x86 and x86_64. Vosk Android 0.3.75 and the small English/Hindi models are fetched at build time with pinned SHA-256 checks. The app uses no JNA or remote model downloads. Model/runtime notices are in `android/licenses/`.
 
 ```sh
 pnpm install --frozen-lockfile

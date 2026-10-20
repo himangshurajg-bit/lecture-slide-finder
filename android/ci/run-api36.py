@@ -2,6 +2,7 @@
 """Run candidate checks, refusing to treat adb/instrument exit status as test success."""
 import subprocess,pathlib,json,time,hashlib,sys
 focus="--frames-only" in sys.argv
+remaining="--remaining-only" in sys.argv
 root=pathlib.Path.cwd(); out=root/'android/runtime/ci-evidence';out.mkdir(parents=True,exist_ok=True)
 results=[]
 # Retain device diagnostics even if the emulator exits during playback.
@@ -36,8 +37,10 @@ try:
         cmd(['adb','shell','am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Download/'+name],'scan-'+name)
     checks=[('frame-study','FrameStudyChecks','ALL_FRAME_STUDY_CHECKS_PASSED',[]),('handled-errors','ErrorChecks','ALL_ERROR_CHECKS_PASSED',[]),('engine-en','AsrChecks','PASS NATIVE_ASR_PIPELINE_AND_PRE_CANCEL en',['-e','language','en']),('engine-hi','AsrChecks','PASS NATIVE_ASR_PIPELINE_AND_PRE_CANCEL hi',['-e','language','hi','-e','fixture','hi-full.m4a']),('documents','RuntimeChecks','ALL_CHECKS_PASSED',[]),('speech-ui-en','AsrUiChecks','ALL_ASR_UI_CHECKS_PASSED en',['-e','language','en']),('speech-ui-hi','AsrUiChecks','ALL_ASR_UI_CHECKS_PASSED hi',['-e','language','hi']),('lifecycle-errors','EdgeChecks','ALL_EDGE_CHECKS_PASSED',[])]
     if focus:checks=[c for c in checks if c[0]=='frame-study']
+    if remaining:checks=[c for c in checks if c[0] in ('speech-ui-hi','lifecycle-errors')]
     for name,klass,marker,extras in checks:
         cmd(['adb','shell','am','force-stop','io.github.himangshurajg.lecture'],name+'-stop',10,False)
+        cmd(['adb','shell','am','force-stop','com.google.android.documentsui'],name+'-picker-stop',10,False)
         start=time.monotonic()
         try:
             text=cmd(['adb','shell','am','instrument','-w']+extras+['io.github.himangshurajg.lecture.test/.'+klass],name,330)
@@ -52,13 +55,13 @@ try:
     for i,p in enumerate(exports):
         dest=out/('export-'+str(i)+'.md');cmd(['adb','pull',p,str(dest)],'pull-export-'+str(i),10)
         if ('# Visible frame text' in dest.read_text() and 'Mass and acceleration' in dest.read_text()) if focus else 'Mass and acceleration.' in dest.read_text():export_pass=True
-    results.append({'check':'export-bytes','passed':export_pass})
+    if not remaining:results.append({'check':'export-bytes','passed':export_pass})
 except Exception as e:results.append({'check':'setup','passed':False,'error':str(e)})
 finally:
     try:cmd(['adb','logcat','-d','-t','2000'],'final-logcat',15,False)
     except Exception as e:results.append({'check':'device-diagnostics','passed':False,'error':str(e)})
     logger.terminate();live.close()
-    report={'scope':('Focused frame-study checks only; other release gates not included. ' if focus else '')+'KVM hosted API36 Google APIs emulator. Not physical-phone or lecture-domain accuracy qualification. CI-only disposable signing; no APK publication.','results':results,'all_covered_checks_passed':bool(results) and all(x['passed'] for x in results)}
+    report={'scope':('Focused remaining speech/lifecycle checks only. ' if remaining else ('Focused frame-study checks only; other release gates not included. ' if focus else ''))+'KVM hosted API36 Google APIs emulator. Not physical-phone or lecture-domain accuracy qualification. CI-only disposable signing; no APK publication.','results':results,'all_covered_checks_passed':bool(results) and all(x['passed'] for x in results)}
     (out/'outcome.json').write_text(json.dumps(report,indent=2))
     print(json.dumps(report,indent=2),flush=True)
 raise SystemExit(0 if report['all_covered_checks_passed'] else 1)

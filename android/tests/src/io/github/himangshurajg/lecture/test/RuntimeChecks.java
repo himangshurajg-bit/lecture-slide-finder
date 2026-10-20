@@ -9,7 +9,7 @@ public class RuntimeChecks extends Instrumentation {
  void fire(String code){runOnMainSync(()->web.evaluateJavascript(code,null));}
  void check(String code,String name)throws Exception {log("CHECK "+name);String r=js(code);if(!"true".equals(r))throw new Exception(name+": "+r);log("PASS "+name);}
  void await(String code,String name)throws Exception{log("AWAIT "+name);long deadline=System.currentTimeMillis()+180000;while(System.currentTimeMillis()<deadline){if("true".equals(js(code))){log("PASS "+name);return;}Thread.sleep(1000);}throw new Exception("Timeout: "+name);}
- AccessibilityNodeInfo find(AccessibilityNodeInfo n,String name){if(n==null)return null;String t=""+n.getText(),d=""+n.getContentDescription();if(name.equalsIgnoreCase(t)||name.equalsIgnoreCase(d))return n;for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo found=find(n.getChild(i),name);if(found!=null)return found;}return null;}
+ AccessibilityNodeInfo find(AccessibilityNodeInfo n,String name){if(n==null)return null;String t=""+n.getText(),d=""+n.getContentDescription();if((name.equalsIgnoreCase(t)||name.equalsIgnoreCase(d)) && n.isVisibleToUser()){android.graphics.Rect b=new android.graphics.Rect();n.getBoundsInScreen(b);if(!b.isEmpty())return n;}for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo found=find(n.getChild(i),name);if(found!=null)return found;}return null;}
  void tapWeb(String selector)throws Exception{
  js("document.querySelector("+JSONObject.quote(selector)+").scrollIntoView({block:'center',behavior:'instant'})");Thread.sleep(500);
  String raw=js("JSON.stringify((()=>{const r=document.querySelector("+JSONObject.quote(selector)+").getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2,innerWidth]})())");
@@ -18,7 +18,26 @@ public class RuntimeChecks extends Instrumentation {
  long now=SystemClock.uptimeMillis();android.view.MotionEvent down=android.view.MotionEvent.obtain(now,now,0,x,y,0),up=android.view.MotionEvent.obtain(now,now+80,1,x,y,0);
  runOnMainSync(()->{long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,x-origin[0],y-origin[1],0);web.dispatchTouchEvent(d);d.recycle();android.view.MotionEvent u=android.view.MotionEvent.obtain(t,t+50,1,x-origin[0],y-origin[1],0);web.dispatchTouchEvent(u);u.recycle();});down.recycle();up.recycle();Thread.sleep(1000);
  }
- void clickNative(String name)throws Exception{long deadline=System.currentTimeMillis()+90000;while(System.currentTimeMillis()<deadline){AccessibilityNodeInfo n=find(getUiAutomation().getRootInActiveWindow(),name);if(n==null){AccessibilityNodeInfo wait=find(getUiAutomation().getRootInActiveWindow(),"Wait");if(wait!=null){wait.performAction(AccessibilityNodeInfo.ACTION_CLICK);log("ENV System UI wait dialog dismissed");}}if(n!=null){android.graphics.Rect bounds=new android.graphics.Rect();n.getBoundsInScreen(bounds);try(android.os.ParcelFileDescriptor command=getUiAutomation().executeShellCommand("input tap "+bounds.centerX()+" "+bounds.centerY());java.io.InputStream input=new android.os.ParcelFileDescriptor.AutoCloseInputStream(command)){while(input.read()!=-1){}}if(true){Thread.sleep(1000);log("CLICK "+name);return;}}Thread.sleep(1000);}log("ROOT "+getUiAutomation().getRootInActiveWindow());throw new Exception("Native control not found: "+name);}
+ boolean scrollNative(AccessibilityNodeInfo n){if(n==null)return false;if(n.isScrollable() && n.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD))return true;for(int i=0;i<n.getChildCount();i++)if(scrollNative(n.getChild(i)))return true;return false;}
+ void clickNative(String name)throws Exception{
+  long deadline=System.currentTimeMillis()+90000;int scrolls=0;
+  while(System.currentTimeMillis()<deadline){
+   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow(),n=find(root,name);
+   if(n!=null){
+    android.graphics.Rect bounds=new android.graphics.Rect(),viewport=new android.graphics.Rect();n.getBoundsInScreen(bounds);if(root!=null)root.getBoundsInScreen(viewport);
+    if(bounds.intersect(viewport) && !bounds.isEmpty()){
+     long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,bounds.centerX(),bounds.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,bounds.centerX(),bounds.centerY(),0);
+     boolean sent=getUiAutomation().injectInputEvent(d,true) && getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();
+     if(!sent)throw new Exception("Native touch injection refused: "+name);
+     Thread.sleep(1000);log("CLICK "+name);return;
+    }
+   }
+   AccessibilityNodeInfo wait=find(root,"Wait");if(wait!=null){wait.performAction(AccessibilityNodeInfo.ACTION_CLICK);log("ENV System UI wait dialog dismissed");}
+   else if(scrolls<12 && scrollNative(root)){scrolls++;log("SCROLL to native control "+name);}
+   Thread.sleep(1000);
+  }
+  log("ROOT "+getUiAutomation().getRootInActiveWindow());throw new Exception("Visible native control not found: "+name);
+ }
  @Override public void onStart(){Bundle result=new Bundle();try{
   android.accessibilityservice.AccessibilityServiceInfo asi=getUiAutomation().getServiceInfo();asi.flags|=android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS|android.accessibilityservice.AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS|android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;getUiAutomation().setServiceInfo(asi);
   Intent i=new Intent().setClassName(getTargetContext(),"io.github.himangshurajg.lecture.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

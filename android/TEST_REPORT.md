@@ -181,3 +181,12 @@ Machine-readable terminal evidence and selected startup log excerpts are retaine
 - Emulator connection disappeared after choosing that fixture in the system picker, before gallery/OCR assertions. Full native feature is not qualified.
 - Retrying a changed rendering configuration (Vulkan disabled, 3GiB guest vs 4GiB) with live diagnostic capture. This is environment diagnosis, not proof of an application fix.
 - Clean-host Python CI found an ignored runtime-only fixture path; regression now reads the same retained public fixture from tracked `android/ci/fixtures/`.
+
+
+## Focused frame-study Android16 pass (39484146368, ddcfea4)
+- Actual hosted Google APIs API36 emulator with KVM, Vulkan off and 3GiB guest passed the original six-frame B-frame fixture: exact decoded frame count/order/PTS/EOS, pre-cancel, system picker, gallery paging and individual-frame stepping.
+- Bundled offline English/Hindi OCR processed all six frames. Coverage survived reload; cancellation recovered controls. Android Save completed and exported bytes contained expected English/Hindi lines at all six source timestamps. Evidence retained in `android/runtime/frame-ci-fixed/` (`outcome.json`, `frame-study.log`, `export-0.md`, screenshot/XML and live logs).
+- Normal CI 39484146174 also passed. Prior local build, 45 unit, 22 Python and 32 browser checks passed. This is a synthetic-fixture qualification only; no long-lecture, arbitrary-codec, physical-phone speed/battery or full stable-release claim.
+- Native screenshot inspected after resizing: final gallery page contains frames 5/6 at 2.000/2.500 seconds, English+Hindi selector and truthful partial-coverage state after cancellation. It is an Android16 screenshot, not browser emulation.
+- Remaining baseline Hindi speech-UI failure occurred before ASR: the picker remained open and the speech-hi filename was off-screen below the Downloads grid. The old harness tapped its out-of-viewport accessibility bounds as if selected. Fix test interaction to require visible/clipped bounds and scroll to the real control, retaining actual picker and speech assertions. Native taps/back now use UiAutomation injection rather than draining shell input command pipes; lifecycle timeout had no reached assertions and an external picker still in foreground.
+- Focused remaining speech/lifecycle rerun uses same successful renderer/RAM configuration. A running job is not a pass; append its actual outcome separately. No production change or stable publication in this harness repair.
