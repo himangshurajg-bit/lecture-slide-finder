@@ -26,6 +26,13 @@ public class RuntimeChecks extends Instrumentation {
    if(n!=null){
     android.graphics.Rect bounds=new android.graphics.Rect(),viewport=new android.graphics.Rect();n.getBoundsInScreen(bounds);if(root!=null)root.getBoundsInScreen(viewport);
     if(bounds.intersect(viewport) && !bounds.isEmpty()){
+     // DocumentsUI filename labels are not clickable; activate their real enabled
+     // card ancestor through Android accessibility, avoiding moving scroll coordinates.
+     AccessibilityNodeInfo target=n;
+     while(target!=null && !target.isClickable())target=target.getParent();
+     if(target!=null && target.isEnabled() && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)){
+      Thread.sleep(1500);log("CLICK accessible control "+name);return;
+     }
      long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,bounds.centerX(),bounds.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,bounds.centerX(),bounds.centerY(),0);
      boolean sent=getUiAutomation().injectInputEvent(d,true) && getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();
      if(!sent)throw new Exception("Native touch injection refused: "+name);
