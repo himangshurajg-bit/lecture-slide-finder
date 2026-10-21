@@ -58,3 +58,11 @@ Metadata from `pnpm licenses list --json` for the locked install. Full upstream 
 ## Android test package
 
 The Android host uses platform Activity, WebView and Storage Access Framework APIs, with no bundled AndroidX/Capacitor/Cordova library. Android SDK build tools compile/package the app; they and the operating-system WebView are not copied into the APK. Existing web dependency notices above continue to apply to its bundled UI. No upstream application code was copied for this host. No project license was selected by this change.
+
+## Bundled Android speech and OCR assets
+
+The stable APK includes the following upstream components; it does not copy an upstream application UI or change their licenses.
+
+- [Vosk Android](https://github.com/alphacep/vosk-api) 0.3.75: Apache-2.0. The small English US 0.15 and Hindi 0.22 models are Apache-2.0 according to their upstream model listings. Runtime/model notices are retained in `android/licenses/VOSK-APACHE-2.0.txt` and `android/licenses/VOSK-MODELS-NOTICE.txt`; build downloads have pinned checksums in `android/fetch-asr-deps.sh`.
+- [Tesseract.js](https://github.com/naptha/tesseract.js) 6.0.1 and bundled Tesseract core: Apache-2.0. English/Hindi `tessdata_fast` assets retain their Apache-2.0 license. Full notices, including component/worker dependencies, are in `public/ocr/licenses/`; asset digests are in `public/ocr/SHA256SUMS` and the model revision is in `public/ocr/lang/REVISION`.
+- Retained Whisper/GGML license files document earlier experiments, not an additional speech engine shipped by the current Vosk-based APK. Check `android/fetch-asr-deps.sh` and the actual APK contents when assessing a rebuilt artifact.

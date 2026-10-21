@@ -1,6 +1,6 @@
 # Lecture — slide finder
 
-A local-first lecture player with transcript search, a video-frame preview and timestamped study notes. A minimal, frosted-glass interface for desktop and Android browsers, plus a bundled Android test APK. No account, paid AI API or media-upload server.
+A local-first lecture player with transcript search, a video-frame preview and timestamped study notes. A minimal, frosted-glass interface for desktop and Android browsers, plus a bundled Android APK. No account, paid AI API or media-upload server.
 
 ![Desktop interface](docs/desktop-chromium.png)
 
@@ -9,9 +9,9 @@ A local-first lecture player with transcript search, a video-frame preview and t
 [Download the signed 1.00.0.00 stable APK](https://github.com/himangshurajg-bit/lecture-slide-finder/releases/tag/android-v1.00.0.00-stable). All 12 covered Android16 emulator qualification checks passed, along with normal CI. See the [test matrix and known limits](docs/ANDROID16_STATUS.md). Physical-phone performance and older-version compatibility remain unqualified.
 
 - Open a video from your device; H.264/AAC MP4 is recommended. Playback depends on the browser's codecs.
-- Import timestamped **SRT, WebVTT or JSON**. The Android candidate can generate speech transcripts offline on the phone in English or Hindi; the optional **local Python speech-recognition tool** remains available for computer/browser workflows.
+- Import timestamped **SRT, WebVTT or JSON**. The stable Android APK can generate speech transcripts offline on the phone in English or Hindi; the optional **local Python speech-recognition tool** remains available for computer/browser workflows.
 - Search transcript words (case-insensitive, all query words must occur in a passage). This is keyword search, not semantic AI search.
-- Tap a timestamp to seek the video and capture its frame nearby. It shows the slide **if the slide is visible at that moment**; the separate candidate frame-study workflow adds visible-text OCR, not semantic slide recognition, deck extraction or slide-change detection.
+- Tap a timestamp to seek the video and capture its frame nearby. It shows the slide **if the slide is visible at that moment**; the separate Android frame-study workflow adds visible-text OCR, not semantic slide recognition, deck extraction or slide-change detection.
 - Save passages and export Markdown with timestamps. Current source restores validated transcripts, notes and search locally; select the same video again after reopening. Replacing a lecture/transcript warns before clearing selected notes. Export a separate backup; storage can fail or be cleared.
 - Responsive touch-friendly layout, labelled controls, keyboard focus, reduced-motion support and a cacheable PWA shell.
 
@@ -54,11 +54,11 @@ The tool refuses to overwrite an existing transcript unless `--force` is supplie
 
 ### Android browser/PWA
 
-The web version is an **Android-compatible responsive web/PWA**. A separate [bundled test APK](#android-apk-test-build) is also available. Open it in a current Chrome browser from a static HTTPS host. Use its install prompt (when offered) or Chrome's **Add to Home screen / Install app** menu. After a complete online visit the app shell can reopen offline. Pick your video and transcript from the device's file picker.
+The web version is an **Android-compatible responsive web/PWA**. A separate [bundled stable APK](#android-apk-test-build) is also available. Open it in a current Chrome browser from a static HTTPS host. Use its install prompt (when offered) or Chrome's **Add to Home screen / Install app** menu. After a complete online visit the app shell can reopen offline. Pick your video and transcript from the device's file picker.
 
-Automatic speech recognition currently runs on a separate computer via the Python tool, **not on Android**. Transfer its JSON file yourself and import it. Existing SRT/VTT files work directly on Android. Local `localhost` works on the development computer; `http://<computer-LAN-IP>` may open on a phone with `pnpm dev --host 0.0.0.0`, but installation/offline service workers require a secure context (HTTPS, or the device's own localhost). Only expose the development server on a trusted network.
+In the browser/PWA, automatic speech recognition runs on a separate computer via the Python tool, **not inside the Android browser**. Transfer its JSON file yourself and import it. Existing SRT/VTT files work directly in the browser. The separate stable APK bundles offline English/Hindi recognition on the phone; that native feature is not provided by the PWA. Local `localhost` works on the development computer; `http://<computer-LAN-IP>` may open on a phone with `pnpm dev --host 0.0.0.0`, but installation/offline service workers require a secure context (HTTPS, or the device's own localhost). Only expose the development server on a trusted network.
 
-Browser tests use Playwright's Pixel 7 emulation in Chromium. They do **not** establish physical Android device, vendor file-picker, low-memory playback or APK installation compatibility. The APK is a separate prerelease test build; no Play Store release is included.
+Browser tests use Playwright's Pixel 7 emulation in Chromium. They do **not** establish physical Android device, vendor file-picker, low-memory playback or APK installation compatibility. The stable APK has separate Android16 emulator evidence; no Play Store release is included.
 
 ## Transcript formats
 
@@ -96,7 +96,7 @@ pnpm test:e2e
 
 The E2E suite starts a production preview server automatically; build first. It checks import, search, seek, actual video-frame capture, Markdown download, bad inputs, hostile text, responsive width and offline reopening. Original synthetic physics slides in `tests/fixtures/lecture.mp4` are the browser fixture. Screenshots are regenerated under `docs/` by the E2E test.
 
-See [docs/VALIDATION.md](docs/VALIDATION.md) for the measured validation and limits. The workflow checks web build/tests; model downloads and ASR accuracy are not CI requirements.
+See [docs/VALIDATION.md](docs/VALIDATION.md) for the measured validation and limits. The normal workflow checks web build/tests. The separate Android16 qualification workflow covers bundled speech-engine and installed-app workflows on synthetic/public fixtures; neither workflow establishes broad lecture-domain ASR accuracy.
 
 ## Structure and credits
 
@@ -112,15 +112,17 @@ Original implementation and fixture artwork. Dependency credits/license metadata
 
 The current interface uses a light pearl/mint background, translucent panels, rounded rim highlights, ambient lighting, spring/elastic touch responses and varied transitions. Motion intensity can be reduced; system **Reduce motion** disables nonessential effects. These are rendered glass/depth effects, not physical refraction. Browser screenshots establish browser appearance; hosted Android16 runtime screenshots/tests do not establish physical-phone speed or battery performance.
 
-## Android APK (test build)
+<a id="android-apk-test-build"></a>
+
+## Android APK (stable release)
 
 The repository now also includes a **bundled, offline Android app**, not a link to a development server. See [Android installation, build and privacy notes](android/README.md). Android 8.0+ is declared, with an up-to-date Android System WebView required. Only emulator/device versions actually exercised in the test report should be treated as tested.
 
-The APK imports videos/transcripts through Android's document picker and exports Markdown through **Save as**. No Internet or broad storage permission is requested. The older public test build has no on-phone recognition. The current unpublished source candidate adds bundled offline English/Hindi Vosk recognition, playback speed and selected-passage repeat; it has not qualified for stable publication. The separate frame-study candidate adds visible-text OCR as described below; its focused six-frame English/Hindi fixture workflow passed on an Android16 emulator, not a long lecture or physical phone. Android 16/API 36 is the first stable-release validation target; other Android versions are deferred. Export your notes before closing or switching lectures. The APK is a prerelease signed **test build**, not a Play Store/production release.
+The APK imports videos/transcripts through Android's document picker and exports Markdown through **Save as**. No Internet or broad storage permission is requested. The older public test build has no on-phone recognition. The signed **1.00.0.00 stable** release includes bundled offline English/Hindi Vosk recognition, playback speed, selected-passage repeat and the frame-study/OCR workflow below. All 12 covered Android16 emulator checks passed, including native export readback, both speech-screen workflows, active cancellation and preservation of existing transcripts/notes. This is not a physical-phone or broad lecture-accuracy qualification; older Android versions remain deferred. Export important notes as a separate backup. Distribution is through GitHub Releases, not the Play Store.
 
-## Frame gallery and visible slide points (candidate)
+## Frame gallery and visible slide points
 
-The Android candidate adds one **All frames · gallery** entry. It reads consecutive output frames from the selected video's decoder, four at a time, preserving each output timestamp and frame index. This is not sparse keyframe sampling. Tap a thumbnail for an exact decoded-image view and single-frame stepping within the retained pages. The ordinary player seek is approximate and is labeled separately. At most four pages (16 thumbnails) remain in memory; restart from the first frame to revisit evicted pages. No guessed FPS index or whole-video image cache is created. A codec/provider error stops the traversal and prevents a complete-coverage claim.
+The stable Android APK includes one **All frames · gallery** entry. It reads consecutive output frames from the selected video's decoder, four at a time, preserving each output timestamp and frame index. This is not sparse keyframe sampling. Tap a thumbnail for an exact decoded-image view and single-frame stepping within the retained pages. The ordinary player seek is approximate and is labeled separately. At most four pages (16 thumbnails) remain in memory; restart from the first frame to revisit evicted pages. No guessed FPS index or whole-video image cache is created. A codec/provider error stops the traversal and prevents a complete-coverage claim.
 
 **Read every decoded frame** runs bundled offline Tesseract OCR in English, Hindi or both. It converts only visible lines into timestamped bullet points, groups adjacent identical OCR output, supports search/paged browsing, preserves original OCR beside editable corrections, saves text locally and exports Markdown with frame/time sources and explicit partial/complete coverage. OCR is not the spoken transcript, an AI summary, or verified equations. Images are at most 1280 px, so small type, handwriting, formulas and low-quality slides can be missed. Blank/unrecognized frames still count as checked but add no invented point. OCR of every frame can take much longer than video playback and consume battery. Cancellation or leaving the app keeps completed points and does not claim a full pass. Analysis intentionally stops at 2,000 unique text groups or 1,000,000 stored original-plus-edited characters; it does not silently discard content to claim completion. Export a partial study before changing the video.
 
@@ -128,4 +130,4 @@ The native sequential decoder requires Android's codec to expose YUV frames. H.2
 
 The OCR assets add about 13 MiB uncompressed. Tesseract.js 6.0.1, matching core and pinned `tessdata_fast` English/Hindi models are bundled with licenses and checksums under `public/ocr/`. No model-download account, paid API, remote lecture upload or computer is required at runtime. Source generation uses `tools/make-frame-fixture.py`, which creates original six-frame English/Hindi slides for tests.
 
-This remains an unreleased candidate. Passing browser tests or compiling an APK is not Android 16 native qualification, and the internal filename containing `stable` does not mean it is approved for release. The first stable target remains Android 16; other Android versions follow only after that release.
+The stable release passed the covered Android16 native qualification, not merely browser tests or APK compilation. See the [qualification matrix](docs/ANDROID16_STATUS.md) for exact scope. Physical-phone performance, long-lecture accuracy and older-version compatibility remain separate, unestablished checks.
