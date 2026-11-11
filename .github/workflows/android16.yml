@@ -1,12 +1,17 @@
-name: Android 16 qualification (candidate only)
+name: Android API compatibility qualification (candidate only)
 on:
   push:
     branches: ['ci/frame-gallery-qualification']
 permissions:
   contents: read
 jobs:
-  native-api36:
+  native-api-compatibility:
+    name: Android API ${{ matrix.api-level }} qualification
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [26, 28, 36]
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -44,10 +49,12 @@ jobs:
           CHECK_BUILD_ONLY=1 CHECK_FIXTURES=android/ci/fixtures bash android/tests/run.sh
           mkdir -p android/runtime/ci-evidence
           cp /tmp/candidate-build.log android/runtime/ci-evidence/
-      - name: Run actual Android 16 workflows with KVM
+      - name: Run Android API ${{ matrix.api-level }} workflows with KVM
+        env:
+          EXPECTED_ANDROID_API: ${{ matrix.api-level }}
         uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808
         with:
-          api-level: 36
+          api-level: ${{ matrix.api-level }}
           target: google_apis
           arch: x86_64
           profile: pixel_6
@@ -57,7 +64,7 @@ jobs:
           disable-linux-hw-accel: false
           emulator-boot-timeout: 240
           emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -accel on -cores 2 -skin 720x1280
-          script: python3 android/ci/run-api36.py
+          script: python3 android/ci/run-android.py
       - name: Retain host resource evidence after runtime
         if: always()
         run: |
@@ -67,6 +74,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: api36-qualification-evidence
+          name: api${{ matrix.api-level }}-qualification-evidence
           path: android/runtime/ci-evidence/
           retention-days: 3

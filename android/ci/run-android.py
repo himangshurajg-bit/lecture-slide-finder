@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Run candidate checks, refusing to treat adb/instrument exit status as test success."""
-import subprocess,pathlib,json,time,hashlib,sys
+"""Run candidate checks on a configured Android API, refusing to treat adb/instrument exit status as test success."""
+import subprocess,pathlib,json,time,hashlib,sys,os
 focus="--frames-only" in sys.argv
 remaining="--remaining-only" in sys.argv
 stress="--stress-only" in sys.argv
 hindi="--hindi-only" in sys.argv
+expected_api=int(os.environ.get("EXPECTED_ANDROID_API", "36"))
 root=pathlib.Path.cwd(); out=root/'android/runtime/ci-evidence';out.mkdir(parents=True,exist_ok=True)
 results=[]
 # Retain device diagnostics even if the emulator exits during playback.
@@ -28,7 +29,7 @@ def capture(name):
     except Exception:pass
 try:
     assert cmd(['adb','shell','getprop','sys.boot_completed'],'boot').strip()=='1'
-    assert cmd(['adb','shell','getprop','ro.build.version.sdk'],'sdk').strip()=='36'
+    assert cmd(['adb','shell','getprop','ro.build.version.sdk'],'sdk').strip()==str(expected_api)
     cmd(['adb','shell','getprop'],'properties')
     cmd(['adb','install','-r','android/build/lecture-slide-finder-1.00.0.00-stable.apk'],'install-candidate',90)
     cmd(['adb','install','-r','android/runtime/instrumentation/runtime-checks.apk'],'install-instrumentation',90)
@@ -73,7 +74,7 @@ finally:
     try:cmd(['adb','logcat','-d','-t','2000'],'final-logcat',15,False)
     except Exception as e:results.append({'check':'device-diagnostics','passed':False,'error':str(e)})
     logger.terminate();live.close()
-    report={'scope':('Hindi speech UI only. ' if hindi else '')+('One-minute synthetic decoder stress only. ' if stress else '')+('Focused remaining speech/lifecycle checks only. ' if remaining else ('Focused frame-study checks only; other release gates not included. ' if focus else ''))+'KVM hosted API36 Google APIs emulator. Not physical-phone or lecture-domain accuracy qualification. CI-only disposable signing; no APK publication.','results':results,'all_covered_checks_passed':bool(results) and all(x['passed'] for x in results)}
+    report={'scope':('Hindi speech UI only. ' if hindi else '')+('One-minute synthetic decoder stress only. ' if stress else '')+('Focused remaining speech/lifecycle checks only. ' if remaining else ('Focused frame-study checks only; other release gates not included. ' if focus else ''))+f'KVM hosted API{expected_api} Google APIs emulator. Not physical-phone or lecture-domain accuracy qualification. CI-only disposable signing; no APK publication.','results':results,'all_covered_checks_passed':bool(results) and all(x['passed'] for x in results)}
     (out/'outcome.json').write_text(json.dumps(report,indent=2))
     print(json.dumps(report,indent=2),flush=True)
 raise SystemExit(0 if report['all_covered_checks_passed'] else 1)
