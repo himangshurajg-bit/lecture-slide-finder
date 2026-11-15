@@ -109,9 +109,20 @@ public class RuntimeChecks extends Instrumentation {
   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();throw new Exception("DocumentsUI roots drawer did not expose a usable source; controls="+nativeTree(root,0));
  }
  void waitForPickerFixture(String name)throws Exception{
-  long deadline=System.currentTimeMillis()+15000;
-  while(System.currentTimeMillis()<deadline){AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&visiblePickerText(root,name)){log("PICKER_FIXTURE_VISIBLE "+name+" title="+documentsPickerTitle(root));return;}Thread.sleep(300);}
-  AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();capturePickerEvidence("fixture-"+name);throw new Exception("Picker did not show expected fixture "+name+"; controls="+nativeTree(root,0));
+  long deadline=System.currentTimeMillis()+15000,lastScroll=0;int scrolls=0;
+  while(System.currentTimeMillis()<deadline){
+   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&visiblePickerText(root,name)){log("PICKER_FIXTURE_VISIBLE "+name+" title="+documentsPickerTitle(root)+" scrolls="+scrolls);return;}
+   // DocumentsUI exposes rows beyond the viewport in some versions, but they
+   // cannot be tapped until scrolled into view. Search only by the exact seeded
+   // name; selection remains a separate real native touch after this wait.
+   long now=System.currentTimeMillis();
+   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&scrolls<12&&now-lastScroll>=900&&scrollNative(root)){
+    scrolls++;lastScroll=now;log("SCROLL picker list looking for "+name+" count="+scrolls);
+   }
+   Thread.sleep(300);
+  }
+  AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();capturePickerEvidence("fixture-"+name);throw new Exception("Picker did not show expected fixture "+name+" after scrolls="+scrolls+"; controls="+nativeTree(root,0));
  }
  void navigateToDownloads(String fixture)throws Exception{
   waitForDocumentsPicker();AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();

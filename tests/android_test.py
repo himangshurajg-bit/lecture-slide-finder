@@ -71,6 +71,14 @@ class AndroidBoundaryTests(unittest.TestCase):
         videos=source.index('else if(fixture.endsWith(".mp4")&&visiblePickerText(root,"Videos"))entry="Videos";')
         self.assertLess(downloads,singular)
         self.assertLess(singular,videos)  # Seeded Download is preferred; Videos is fallback.
+    def test_picker_wait_scrolls_until_exact_fixture_is_visible(self):
+        source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/RuntimeChecks.java').read_text()
+        method=source.split('void waitForPickerFixture(String name)')[1].split('void navigateToDownloads')[0]
+        self.assertIn('visiblePickerText(root,name)',method)
+        self.assertIn('scrolls<12',method)
+        self.assertIn('scrollNative(root)',method)
+        self.assertIn('Picker did not show expected fixture '+ '"+name+"',method)
+
     def test_speech_ui_requires_search_and_export_readback(self):
         source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/AsrUiChecks.java').read_text()
         runner=(ROOT/'android/ci/run-android.py').read_text()
