@@ -17,7 +17,7 @@ public class RuntimeChecks extends Instrumentation {
   android.graphics.Bitmap before=immediate?null:getUiAutomation().takeScreenshot();if(before!=null){try(java.io.FileOutputStream file=new java.io.FileOutputStream(new java.io.File(getTargetContext().getExternalFilesDir(null),"web-tap.png"))){before.compress(android.graphics.Bitmap.CompressFormat.PNG,100,file);}before.recycle();}
   String raw=js("JSON.stringify((()=>{const e=document.querySelector("+JSONObject.quote(selector)+");const r=e.getBoundingClientRect();const x=r.left+r.width/2,y=r.top+r.height/2;const hit=document.elementFromPoint(x,y);return [x,y,innerWidth,!!hit&&(e===hit||e.contains(hit)),e.disabled,hit?.outerHTML.slice(0,250),visualViewport?.offsetLeft||0,visualViewport?.offsetTop||0,visualViewport?.scale||1,devicePixelRatio]})())");
   log("WEB_TAP "+selector+" "+raw);
-  JSONArray a=new JSONArray((String)new JSONTokener(raw).nextValue());
+  Object parsed=new JSONTokener(raw).nextValue();JSONArray a=parsed instanceof JSONArray?(JSONArray)parsed:new JSONArray((String)parsed);
   if(!a.getBoolean(3)||a.optBoolean(4))throw new Exception("Web control obscured or disabled: "+selector);
   final int[] origin=new int[2];runOnMainSync(()->web.getLocationOnScreen(origin));
   // CSS client coordinates are layout-viewport coordinates. WebView's actual
