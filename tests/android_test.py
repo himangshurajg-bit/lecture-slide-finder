@@ -30,7 +30,7 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertIn('!HOST.equals(u.getHost())',self.java)
         self.assertNotIn('connect-src *',self.java)
     def test_native_ci_references_only_present_instrumentation(self):
-        runner=(ROOT/'android/ci/run-api36.py').read_text()
+        runner=(ROOT/'android/ci/run-android.py').read_text()
         manifest=ET.parse(ROOT/'android/tests/AndroidManifest.xml').getroot()
         registered={n.get(ANDROID+'name') for n in manifest.findall('instrumentation')}
         for name in set(re.findall(r"'([A-Z][A-Za-z]+Checks)'", runner)):
@@ -62,7 +62,7 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertIn('clickNative("Downloads");preferNativeListView();clickNative("speech-',speech)
     def test_speech_ui_requires_search_and_export_readback(self):
         source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/AsrUiChecks.java').read_text()
-        runner=(ROOT/'android/ci/run-api36.py').read_text()
+        runner=(ROOT/'android/ci/run-android.py').read_text()
         self.assertIn('search generated speech transcript', source)
         self.assertIn('generated speech Markdown save accepted', source)
         self.assertIn("'# Study notes — speech-'+language+'.mp4'", runner)
@@ -82,7 +82,7 @@ class AndroidBoundaryTests(unittest.TestCase):
         fixtures=ROOT/'android/ci/fixtures'
         sums=json.loads((fixtures/'SHA256SUMS.json').read_text())
         self.assertEqual(hashlib.sha256((fixtures/'cancel-long.mp4').read_bytes()).hexdigest(),sums['cancel-long.mp4'])
-        self.assertIn("'cancel-long.mp4':root/",(ROOT/'android/ci/run-api36.py').read_text())
+        self.assertIn("'cancel-long.mp4':root/",(ROOT/'android/ci/run-android.py').read_text())
     def test_signing_not_in_source_and_no_private_media(self):
         self.assertNotIn('storepass ',(ROOT/'android/build-test-apk.sh').read_text())
         self.assertFalse(list((ROOT/'android/app/src/main').rglob('*.mp4')))
