@@ -77,7 +77,21 @@ public class RuntimeChecks extends Instrumentation {
   if(!pkg.toLowerCase().contains("documentsui")){log("PICKER_CLOSED_AFTER_FILE_CLICK "+name+" package="+pkg);return;}
   log("PICKER_REMAINS_AFTER_FILE_CLICK "+name+" controls="+nativeTree(root,0));
   AccessibilityNodeInfo confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
-  if(confirm==null){log("PICKER_NO_OPEN_OR_SELECT_BUTTON "+name);return;}
+  if(confirm==null){
+   // On older DocumentsUI, the first tap selects a row but does not return it.
+   // A second tap on the selected file opens it when no explicit Open/Select
+   // action is exposed. Recheck the package before touching anything again.
+   AccessibilityNodeInfo selected=find(root,name);
+   if(selected!=null){
+    AccessibilityNodeInfo row=selected;while(row!=null&&!row.isClickable())row=row.getParent();
+    boolean opened=row!=null&&row.isEnabled()&&row.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+    if(!opened){Rect b=new Rect();(row==null?selected:row).getBoundsInScreen(b);if(!b.isEmpty()){long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,b.centerX(),b.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,b.centerX(),b.centerY(),0);opened=getUiAutomation().injectInputEvent(d,true)&&getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();}}
+    Thread.sleep(1200);root=getUiAutomation().getRootInActiveWindow();pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
+    log("PICKER_SECOND_FILE_TAP "+name+" clicked="+opened+" package="+pkg);
+    if(!pkg.toLowerCase().contains("documentsui"))return;
+   }
+   log("PICKER_NO_OPEN_OR_SELECT_BUTTON "+name);return;
+  }
   AccessibilityNodeInfo button=confirm;while(button!=null&&!button.isClickable())button=button.getParent();
   if(button==null||!button.isEnabled()){log("PICKER_CONFIRM_DISABLED "+name);return;}
   boolean clicked=button.performAction(AccessibilityNodeInfo.ACTION_CLICK);

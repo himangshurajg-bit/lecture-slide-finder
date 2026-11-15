@@ -17,7 +17,7 @@ public final class FrameDecoder implements AutoCloseable {
     private MediaCodec codec;
     private boolean inputEnd, outputEnd;
     private int index, rotation;
-    private long durationUs;
+    private long durationUs, firstPresentationTimeUs=Long.MIN_VALUE;
     private final MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
     public FrameDecoder(Context context, Uri uri) throws Exception {
         try {
@@ -72,7 +72,12 @@ public final class FrameDecoder implements AutoCloseable {
                 ByteArrayOutputStream bytes=new ByteArrayOutputStream();
                 try{bitmap.compress(Bitmap.CompressFormat.JPEG,80,bytes);}finally{bitmap.recycle();}
                 if(bytes.size()>700000)throw new IOException("Frame too large");
-                JSONObject result=new JSONObject().put("index",index++).put("time",Math.max(0,info.presentationTimeUs)/1000000.0)
+                // Android 8/9 decoders may report an edit-list offset in output PTS.
+                // Match the media element's zero-based timeline by anchoring the first
+                // presentation frame at zero, while preserving all subsequent PTS deltas.
+                if(firstPresentationTimeUs==Long.MIN_VALUE)firstPresentationTimeUs=info.presentationTimeUs;
+                long relativePresentationTimeUs=Math.max(0,info.presentationTimeUs-firstPresentationTimeUs);
+                JSONObject result=new JSONObject().put("index",index++).put("time",relativePresentationTimeUs/1000000.0)
                     .put("image","data:image/jpeg;base64,"+Base64.encodeToString(bytes.toByteArray(),Base64.NO_WRAP));
                 if(eos)outputEnd=true;
                 return result;

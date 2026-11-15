@@ -93,7 +93,7 @@ $<HTMLInputElement>('#video-file').addEventListener('change',event=>{
   video.pause(); video.removeAttribute('src'); video.load(); if(videoUrl)URL.revokeObjectURL(videoUrl);
   resetRepeat();videoUrl=URL.createObjectURL(file); fileName=file.name; video.src=videoUrl; video.hidden=false; $('#empty').hidden=true; $('#filename').textContent=file.name; $('#frame-box').hidden=true; if(location.origin==='https://appassets.androidplatform.net'){window.prompt('lecture-video-accepted-v1','');$<HTMLButtonElement>('#asr-generate').disabled=false;} frameStudy?.onOpen(file);persist();status(cues.length ? 'Video reopened. Your saved transcript and notes are ready.' : 'Video opened locally. Add its matching transcript.');
 });
-video.addEventListener('error',()=>status('Your browser cannot play this file. Try H.264/AAC MP4 or another supported format.',true));
+video.addEventListener('error',()=>{ if(!videoUrl)return; status('Your browser cannot play this file. Try H.264/AAC MP4 or another supported format.',true); });
 video.addEventListener('loadedmetadata',()=>{ $('#video-badge').textContent=formatTime(video.duration); });
 function setTranscript(next: Cue[], label: string){ if(notes.length && !window.confirm('Replace this transcript and clear its selected notes? Export your notes first if you want to keep them.')) return; resetRepeat();cues=next;notes=[];$<HTMLInputElement>('#query').value='';$<HTMLInputElement>('#query').disabled=false;$('#cue-count').textContent=`${cues.length} PASSAGES`;render();renderNotes();status(`${label} loaded. Search, jump or save a passage.`); }
 // Android 8/9 may ship an older WebView without Blob.text().
