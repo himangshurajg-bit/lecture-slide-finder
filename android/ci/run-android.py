@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Run candidate checks on a configured Android API, refusing to treat adb/instrument exit status as test success."""
-import subprocess,pathlib,json,time,hashlib,sys,os
+import subprocess,pathlib,json,time,hashlib,sys,os,re
 focus="--frames-only" in sys.argv
 remaining="--remaining-only" in sys.argv
 stress="--stress-only" in sys.argv
@@ -57,7 +57,7 @@ try:
         cmd(['adb','pull','/sdcard/Android/data/io.github.himangshurajg.lecture/files/web-tap.png',str(out/(name+'-web-tap.png'))],name+'-tap-capture',10,False)
     # Verify native export contents, not just a successful Save action.
     text=cmd(['adb','shell','find','/sdcard/Download','-type','f'],'download-files',20)
-    exports=[p for p in text.splitlines() if p.endswith('.md')]
+    exports=[p for p in text.splitlines() if re.search(r'\.md(?: \(\d+\))?$',p)]
     export_pass=False
     speech_export_pass={'en':False,'hi':False}
     for i,p in enumerate(exports):

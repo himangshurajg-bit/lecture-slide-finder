@@ -10,6 +10,7 @@ if (typeof window.globalThis === 'undefined') {
 // regenerator-runtime's legacy fallback calls Function(), which the app's CSP
 // intentionally blocks. Predeclare the global so its strict-mode assignment
 // succeeds without eval on WebViews lacking globalThis.
-if (typeof window.regeneratorRuntime === 'undefined') {
-  window.regeneratorRuntime = {};
-}
+// Declare a classic-script global binding so strict-mode legacy runtimes can
+// assign to it without attempting their CSP-blocked Function() fallback.
+var regeneratorRuntime = window.regeneratorRuntime || {};
+window.regeneratorRuntime = regeneratorRuntime;

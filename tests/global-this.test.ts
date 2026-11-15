@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 const polyfill = readFileSync(new URL('../public/global-this.js', import.meta.url), 'utf8');
 
 describe('legacy WebView globalThis compatibility', () => {
-  it('restores the global alias without enabling eval', () => {
+  it('provides a strict global binding without invoking Function', () => {
     const context = createContext({});
-    runInContext('delete globalThis', context);
+    runInContext('delete globalThis; Function = function () { throw new Error("CSP eval reached"); };', context);
     const legacyWindow = runInContext('this', context) as Record<string, unknown>;
     legacyWindow.window = legacyWindow;
 
@@ -16,11 +16,7 @@ describe('legacy WebView globalThis compatibility', () => {
     expect(runInContext('typeof globalThis', context)).toBe('object');
     expect(runInContext('globalThis === window', context)).toBe(true);
     expect(runInContext('typeof window.regeneratorRuntime', context)).toBe('object');
-
-    // Match regenerator-runtime's strict global assignment on Chrome 69, where
-    // globalThis is still absent and CSP blocks its Function() fallback.
-    runInContext('delete globalThis; Function = function () { throw new Error(\"CSP eval reached\"); };', context);
-    runInContext('try { regeneratorRuntime = { ready: true }; } catch (e) { if (typeof globalThis === \"object\") globalThis.regeneratorRuntime = { ready: true }; else Function(\"r\", \"regeneratorRuntime = r\")({ ready: true }); }', context);
-    expect(runInContext('regeneratorRuntime.ready', context)).toBe(true);
+    runInContext('"use strict"; regeneratorRuntime = { ready: true };', context);
+    expect(runInContext('window.regeneratorRuntime.ready', context)).toBe(true);
   });
 });
