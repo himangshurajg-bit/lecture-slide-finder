@@ -55,6 +55,11 @@ public class RuntimeChecks extends Instrumentation {
   AccessibilityNodeInfo list=find(getUiAutomation().getRootInActiveWindow(),"List view");
   if(list!=null){clickNative("List view");log("PICKER list view avoids clipped off-screen grid filename labels");}
  }
+ String nativeTree(AccessibilityNodeInfo n,int depth){
+  if(n==null||depth>8)return "";StringBuilder b=new StringBuilder();CharSequence t=n.getText(),d=n.getContentDescription();
+  if((t!=null&&!t.toString().isEmpty())||(d!=null&&!d.toString().isEmpty()))b.append("["+t+"|"+d+" clickable="+n.isClickable()+" enabled="+n.isEnabled()+" selected="+n.isSelected()+"] ");
+  for(int i=0;i<n.getChildCount();i++)b.append(nativeTree(n.getChild(i),depth+1));return b.toString();
+ }
  void clickNative(String name)throws Exception{
   long deadline=System.currentTimeMillis()+90000;int scrolls=0;
   while(System.currentTimeMillis()<deadline){
@@ -67,7 +72,17 @@ public class RuntimeChecks extends Instrumentation {
      AccessibilityNodeInfo target=n;
      while(target!=null && !target.isClickable())target=target.getParent();
      if(target!=null && target.isEnabled() && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)){
-      Thread.sleep(1500);log("CLICK accessible control "+name);return;
+      Thread.sleep(1500);
+      if(name.endsWith(".mp4")||name.endsWith(".srt")){
+       AccessibilityNodeInfo after=getUiAutomation().getRootInActiveWindow();
+       if(after!=null&&after.getPackageName()!=null&&after.getPackageName().toString().contains("documentsui")){
+        log("PICKER_REMAINS_AFTER_FILE_CLICK "+name+" controls="+nativeTree(after,0));
+        AccessibilityNodeInfo confirm=find(after,"Open");if(confirm==null)confirm=find(after,"Select");
+        AccessibilityNodeInfo button=confirm;while(button!=null&&!button.isClickable())button=button.getParent();
+        if(button!=null&&button.isEnabled()&&button.performAction(AccessibilityNodeInfo.ACTION_CLICK)){Thread.sleep(1500);log("CLICK picker confirmation for "+name);}
+       } else log("PICKER_CLOSED_AFTER_FILE_CLICK "+name);
+      }
+      log("CLICK accessible control "+name);return;
      }
      long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,bounds.centerX(),bounds.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,bounds.centerX(),bounds.centerY(),0);
      boolean sent=getUiAutomation().injectInputEvent(d,true) && getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();

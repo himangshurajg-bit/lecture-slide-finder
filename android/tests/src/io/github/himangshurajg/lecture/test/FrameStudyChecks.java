@@ -1,10 +1,12 @@
 package io.github.himangshurajg.lecture.test;
-import android.app.*;import android.content.*;import android.os.*;import android.webkit.*;import android.net.Uri;import java.io.*;import java.lang.reflect.*;import java.util.concurrent.atomic.AtomicBoolean;import org.json.*;
+import android.app.*;import android.content.*;import android.os.*;import android.webkit.*;import android.net.Uri;import android.media.*;import java.io.*;import java.lang.reflect.*;import java.util.concurrent.atomic.AtomicBoolean;import org.json.*;
 /** Original six-frame B-frame fixture; proves sequential output/PTS independently of gallery UI. */
 public final class FrameStudyChecks extends RuntimeChecks {
  @Override public void onStart(){Bundle result=new Bundle();Object decoder=null;try{
   File source=new File(getTargetContext().getCacheDir(),"frame-study.mp4");
   try(InputStream in=getContext().getAssets().open("frame-study.mp4");OutputStream out=new FileOutputStream(source)){byte[] b=new byte[65536];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}
+  MediaExtractor probe=new MediaExtractor();probe.setDataSource(getTargetContext(),Uri.fromFile(source),null);StringBuilder samples=new StringBuilder();
+  for(int i=0;i<8&&probe.getSampleTrackIndex()>=0;i++){if(samples.length()>0)samples.append(',');samples.append(probe.getSampleTime());probe.advance();}probe.release();log("EXTRACTOR_SAMPLE_PTS_US api="+Build.VERSION.SDK_INT+" ["+samples+"]");
   Class<?> type=getTargetContext().getClassLoader().loadClass("io.github.himangshurajg.lecture.FrameDecoder");
   decoder=type.getConstructor(android.content.Context.class,Uri.class).newInstance(getTargetContext(),Uri.fromFile(source));
   AtomicBoolean cancel=new AtomicBoolean(false);int count=0;boolean done=false;JSONArray pts=new JSONArray();
