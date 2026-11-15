@@ -1,5 +1,5 @@
 package io.github.himangshurajg.lecture.test;
-import android.app.*;import android.content.*;import android.os.*;import android.webkit.*;import android.view.accessibility.*;import org.json.*;import java.util.concurrent.*;
+import android.app.*;import android.content.*;import android.os.*;import android.webkit.*;import android.view.accessibility.*;import android.graphics.Rect;import android.media.*;import android.net.Uri;import org.json.*;import java.util.concurrent.*;
 /** Separate same-signed test instrumentation; never bundled in the distributed app. */
 public class RuntimeChecks extends Instrumentation {
  Activity activity; WebView web;
@@ -60,6 +60,30 @@ public class RuntimeChecks extends Instrumentation {
   if((t!=null&&!t.toString().isEmpty())||(d!=null&&!d.toString().isEmpty()))b.append("["+t+"|"+d+" clickable="+n.isClickable()+" enabled="+n.isEnabled()+" selected="+n.isSelected()+"] ");
   for(int i=0;i<n.getChildCount();i++)b.append(nativeTree(n.getChild(i),depth+1));return b.toString();
  }
+ void logExtractorPts(Uri uri,String label,int limit)throws Exception{
+  MediaExtractor probe=new MediaExtractor();
+  try{
+   probe.setDataSource(getTargetContext(),uri,null);int track=-1;MediaFormat format=null;
+   for(int i=0;i<probe.getTrackCount();i++){MediaFormat candidate=probe.getTrackFormat(i);String mime=candidate.getString(MediaFormat.KEY_MIME);if(mime!=null&&mime.startsWith("video/")){track=i;format=candidate;break;}}
+   if(track<0)throw new Exception("No video track in PTS probe: "+label);probe.selectTrack(track);
+   log("VIDEO_TRACK_PROBE label="+label+" api="+Build.VERSION.SDK_INT+" track="+track+" format="+format);
+   for(int i=0;i<limit&&probe.getSampleTrackIndex()>=0;i++){log("INPUT_SAMPLE_PTS label="+label+" index="+i+" pts_us="+probe.getSampleTime()+" flags="+probe.getSampleFlags());if(!probe.advance())break;}
+  }finally{probe.release();}
+ }
+ void afterNativeFileClick(String name)throws Exception{
+  if(!name.endsWith(".mp4")&&!name.endsWith(".srt"))return;
+  Thread.sleep(1200);AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+  String pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
+  if(!pkg.toLowerCase().contains("documentsui")){log("PICKER_CLOSED_AFTER_FILE_CLICK "+name+" package="+pkg);return;}
+  log("PICKER_REMAINS_AFTER_FILE_CLICK "+name+" controls="+nativeTree(root,0));
+  AccessibilityNodeInfo confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
+  if(confirm==null){log("PICKER_NO_OPEN_OR_SELECT_BUTTON "+name);return;}
+  AccessibilityNodeInfo button=confirm;while(button!=null&&!button.isClickable())button=button.getParent();
+  if(button==null||!button.isEnabled()){log("PICKER_CONFIRM_DISABLED "+name);return;}
+  boolean clicked=button.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+  if(!clicked){Rect b=new Rect();button.getBoundsInScreen(b);if(!b.isEmpty()){long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,b.centerX(),b.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,b.centerX(),b.centerY(),0);clicked=getUiAutomation().injectInputEvent(d,true)&&getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();}}
+  if(clicked){Thread.sleep(1200);log("CLICK picker confirmation for "+name);}else log("PICKER_CONFIRM_TAP_FAILED "+name);
+ }
  void clickNative(String name)throws Exception{
   long deadline=System.currentTimeMillis()+90000;int scrolls=0;
   while(System.currentTimeMillis()<deadline){
@@ -72,22 +96,14 @@ public class RuntimeChecks extends Instrumentation {
      AccessibilityNodeInfo target=n;
      while(target!=null && !target.isClickable())target=target.getParent();
      if(target!=null && target.isEnabled() && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)){
-      Thread.sleep(1500);
-      if(name.endsWith(".mp4")||name.endsWith(".srt")){
-       AccessibilityNodeInfo after=getUiAutomation().getRootInActiveWindow();
-       if(after!=null&&after.getPackageName()!=null&&after.getPackageName().toString().contains("documentsui")){
-        log("PICKER_REMAINS_AFTER_FILE_CLICK "+name+" controls="+nativeTree(after,0));
-        AccessibilityNodeInfo confirm=find(after,"Open");if(confirm==null)confirm=find(after,"Select");
-        AccessibilityNodeInfo button=confirm;while(button!=null&&!button.isClickable())button=button.getParent();
-        if(button!=null&&button.isEnabled()&&button.performAction(AccessibilityNodeInfo.ACTION_CLICK)){Thread.sleep(1500);log("CLICK picker confirmation for "+name);}
-       } else log("PICKER_CLOSED_AFTER_FILE_CLICK "+name);
-      }
-      log("CLICK accessible control "+name);return;
+      afterNativeFileClick(name);log("CLICK accessible control "+name);return;
      }
-     long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,bounds.centerX(),bounds.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,bounds.centerX(),bounds.centerY(),0);
+     Rect tapBounds=new Rect();(target==null?n:target).getBoundsInScreen(tapBounds);
+     if(!tapBounds.intersect(viewport)||tapBounds.isEmpty())tapBounds.set(bounds);
+     long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,tapBounds.centerX(),tapBounds.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,tapBounds.centerX(),tapBounds.centerY(),0);
      boolean sent=getUiAutomation().injectInputEvent(d,true) && getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();
      if(!sent)throw new Exception("Native touch injection refused: "+name);
-     Thread.sleep(1000);log("CLICK "+name);return;
+     Thread.sleep(1000);afterNativeFileClick(name);log("CLICK "+name);return;
     }
    }
    AccessibilityNodeInfo wait=find(root,"Wait");if(wait!=null){wait.performAction(AccessibilityNodeInfo.ACTION_CLICK);log("ENV System UI wait dialog dismissed");}

@@ -5,11 +5,13 @@ public final class FrameStressChecks extends RuntimeChecks {
  @Override public void onStart(){Bundle result=new Bundle();Object decoder=null;try{
   File source=new File(getTargetContext().getCacheDir(),"frame-stress.mp4");
   try(InputStream in=getContext().getAssets().open("frame-stress.mp4");OutputStream out=new FileOutputStream(source)){byte[] bytes=new byte[65536];int n;while((n=in.read(bytes))!=-1)out.write(bytes,0,n);}
+  logExtractorPts(Uri.fromFile(source),"frame-stress",12);
   Class<?> type=getTargetContext().getClassLoader().loadClass("io.github.himangshurajg.lecture.FrameDecoder");
   decoder=type.getConstructor(android.content.Context.class,Uri.class).newInstance(getTargetContext(),Uri.fromFile(source));
-  AtomicBoolean cancel=new AtomicBoolean(false);int count=0,maxPss=0,maxBatchBytes=0;boolean done=false;long start=SystemClock.elapsedRealtime();
+  AtomicBoolean cancel=new AtomicBoolean(false);int count=0,maxPss=0,maxBatchBytes=0;boolean done=false;long start=SystemClock.elapsedRealtime();String firstMismatch=null;
   while(!done){JSONObject batch=(JSONObject)type.getMethod("page",int.class,AtomicBoolean.class).invoke(decoder,4,cancel);JSONArray frames=batch.getJSONArray("frames");if(frames.length()>4)throw new Exception("Unbounded batch");maxBatchBytes=Math.max(maxBatchBytes,batch.toString().length());
-   for(int i=0;i<frames.length();i++){JSONObject frame=frames.getJSONObject(i);double actualTime=frame.getDouble("time"),expectedTime=count/15.0;if(count<8)log("STRESS_FRAME index="+frame.getInt("index")+" pts="+actualTime+" expected="+expectedTime);if(frame.getInt("index")!=count||Math.abs(actualTime-expectedTime)>.001)throw new Exception("Missing/reordered frame "+count+" time="+actualTime+" expected_time="+expectedTime);count++;}done=batch.getBoolean("done");if(count>900)throw new Exception("Duplicate frame");
+   for(int i=0;i<frames.length();i++){JSONObject frame=frames.getJSONObject(i);double actualTime=frame.getDouble("time"),expectedTime=count/15.0;if(count<8)log("STRESS_FRAME index="+frame.getInt("index")+" pts="+actualTime+" expected="+expectedTime);if(firstMismatch==null&&(frame.getInt("index")!=count||Math.abs(actualTime-expectedTime)>.001))firstMismatch="Missing/reordered frame "+count+" time="+actualTime+" expected_time="+expectedTime;count++;}done=batch.getBoolean("done");if(count>900)throw new Exception("Duplicate frame");
+   if(firstMismatch!=null&&count>=8)throw new Exception(firstMismatch);
    if(count%100==0){android.os.Debug.MemoryInfo mem=new android.os.Debug.MemoryInfo();android.os.Debug.getMemoryInfo(mem);maxPss=Math.max(maxPss,mem.getTotalPss());log("STRESS_PROGRESS frames="+count+" pss_kib="+mem.getTotalPss());}
   }
   if(count!=900)throw new Exception("Expected 900 frames, got "+count);

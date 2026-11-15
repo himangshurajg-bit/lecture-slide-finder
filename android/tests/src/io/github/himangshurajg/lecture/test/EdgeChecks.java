@@ -30,7 +30,9 @@ public final class EdgeChecks extends RuntimeChecks {
  tapWeb("#export");Thread.sleep(2000);cancelDocument();await("document.querySelector('#status').textContent.includes('Export cancelled')","export cancellation reported");check("document.querySelector('#notes-count').textContent==='1'","export cancellation preserves notes");
  back();clickNative("Keep studying");check("document.querySelector('#notes-count').textContent==='1'","back cancellation preserves session");
  runOnMainSync(()->activity.finish());Thread.sleep(2000);connect();check("document.querySelector('#notes-count').textContent==='1' && document.querySelector('#cue-count').textContent==='3 PASSAGES'","Activity close and reopen recovers session");
- js("localStorage.setItem('lecture-session-v1','broken');location.reload()");Thread.sleep(2000);await("document.querySelector('#status').textContent.includes('could not be restored')","corrupt saved state handled");
+ log("CORRUPT_STATE_WRITE "+js("localStorage.setItem('lecture-session-v1','broken');JSON.stringify({stored:localStorage.getItem('lecture-session-v1'),url:location.href})"));js("location.reload()");
+ try{await("document.querySelector('#status').textContent.includes('could not be restored')","corrupt saved state handled");}
+ catch(Exception e){log("CORRUPT_STATE_DIAGNOSTIC "+js("JSON.stringify({status:(document.querySelector('#status')?document.querySelector('#status').textContent:null),stored:localStorage.getItem('lecture-session-v1'),ready:document.readyState,url:location.href})"));throw e;}
  js("document.querySelector('#demo').click()");check("document.querySelector('#cue-count').textContent==='3 PASSAGES'","usable after corrupt state");
  log("ALL_EDGE_CHECKS_PASSED");result.putString("stream","Native edge checks passed\n");finish(Activity.RESULT_OK,result);
  }catch(Throwable e){log("FAIL "+e.toString());result.putString("stream",e.toString()+"\n");finish(Activity.RESULT_CANCELED,result);}}
