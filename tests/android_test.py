@@ -60,7 +60,9 @@ class AndroidBoundaryTests(unittest.TestCase):
         method=source.split('boolean scrollNative(')[1].split('void preferNativeListView')[0]
         self.assertLess(method.index('scrollNative(n.getChild(i))'),method.index('n.isScrollable()'))
         speech=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/AsrUiChecks.java').read_text()
-        self.assertIn('clickNative("Downloads");preferNativeListView();clickNative("speech-',speech)
+        self.assertIn('navigateToDownloads();preferNativeListView();clickNative("speech-',speech)
+        self.assertIn('boolean atDownloadsDirectory(',source)
+        self.assertIn('if(!isDocumentsPicker(root)||rootsDrawerOpen(root))return false;',source)
     def test_speech_ui_requires_search_and_export_readback(self):
         source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/AsrUiChecks.java').read_text()
         runner=(ROOT/'android/ci/run-android.py').read_text()
