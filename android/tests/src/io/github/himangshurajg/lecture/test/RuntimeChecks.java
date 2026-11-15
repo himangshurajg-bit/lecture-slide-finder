@@ -11,6 +11,22 @@ public class RuntimeChecks extends Instrumentation {
  void await(String code,String name)throws Exception{log("AWAIT "+name);long deadline=System.currentTimeMillis()+180000;while(System.currentTimeMillis()<deadline){if("true".equals(js(code))){log("PASS "+name);return;}Thread.sleep(1000);}throw new Exception("Timeout: "+name);}
  AccessibilityNodeInfo find(AccessibilityNodeInfo n,String name){if(n==null)return null;String t=""+n.getText(),d=""+n.getContentDescription();if((name.equalsIgnoreCase(t)||name.equalsIgnoreCase(d)) && n.isVisibleToUser()){android.graphics.Rect b=new android.graphics.Rect();n.getBoundsInScreen(b);if(!b.isEmpty())return n;}for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo found=find(n.getChild(i),name);if(found!=null)return found;}return null;}
  AccessibilityNodeInfo findLast(AccessibilityNodeInfo n,String name){if(n==null)return null;AccessibilityNodeInfo result=null;String t=""+n.getText(),d=""+n.getContentDescription();if((name.equalsIgnoreCase(t)||name.equalsIgnoreCase(d))&&n.isVisibleToUser()){Rect b=new Rect();n.getBoundsInScreen(b);if(!b.isEmpty())result=n;}for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo found=findLast(n.getChild(i),name);if(found!=null)result=found;}return result;}
+ AccessibilityNodeInfo findResourceId(AccessibilityNodeInfo node,String resourceId){
+  if(node==null)return null;
+  if(resourceId.equals(node.getViewIdResourceName()))return node;
+  for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo found=findResourceId(node.getChild(i),resourceId);if(found!=null)return found;}
+  return null;
+ }
+ String documentsPickerTitle(AccessibilityNodeInfo root){
+  AccessibilityNodeInfo toolbar=findResourceId(root,"com.google.android.documentsui:id/toolbar");
+  return firstVisibleText(toolbar);
+ }
+ String firstVisibleText(AccessibilityNodeInfo node){
+  if(node==null)return null;
+  CharSequence text=node.getText();if(text!=null&&!text.toString().trim().isEmpty())return text.toString().trim();
+  for(int i=0;i<node.getChildCount();i++){String found=firstVisibleText(node.getChild(i));if(found!=null)return found;}
+  return null;
+ }
  String visibleDownloadsFixture(AccessibilityNodeInfo root){
   if(root==null)return null;Rect window=new Rect();root.getBoundsInScreen(window);
   for(String name:new String[]{"frame-study.mp4","speech-en.mp4","speech-hi.mp4","cancel-long.mp4","lecture.mp4"}){
@@ -72,10 +88,10 @@ public class RuntimeChecks extends Instrumentation {
   long deadline=System.currentTimeMillis()+12000;
   while(System.currentTimeMillis()<deadline){
    AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
-   // DocumentsUI may leave its roots drawer open after navigation. Confirm the
-   // actual Downloads location by its title and a known fixture, not by requiring
-   // the unrelated Recent drawer entry to disappear.
-   if("Downloads".equals(name)&&isDocumentsPicker(root)&&find(root,"Open from")==null&&find(root,"Downloads")!=null){String fixture=visibleDownloadsFixture(root);if(fixture!=null){log("PICKER_NAVIGATION_CONFIRMED Downloads fixture="+fixture);return;}}
+   // DocumentsUI can leave its roots drawer open. Read the actual toolbar
+   // title (not a matching Downloads entry in the drawer) and require a known
+   // fixture in the visible directory before confirming navigation.
+   if("Downloads".equals(name)&&isDocumentsPicker(root)&&"Downloads".equals(documentsPickerTitle(root))){String fixture=visibleDownloadsFixture(root);if(fixture!=null){log("PICKER_NAVIGATION_CONFIRMED Downloads title=Downloads fixture="+fixture);return;}}
    if("List view".equals(name)&&isDocumentsPicker(root)&&find(root,"Grid view")!=null&&find(root,"List view")==null){log("PICKER_LAYOUT_CONFIRMED list");return;}
    Thread.sleep(400);
   }
