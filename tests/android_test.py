@@ -73,6 +73,10 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertIn('findLast(root,text)',source)
         self.assertNotIn('Recent fixture="+fixture',source)  # Obscured rows cannot select a root.
         self.assertIn('isPickerRoot(name)&&isDocumentsPicker(root)&&rootsDrawerOpen(root)',source)
+        self.assertIn('void closePickerRootsDrawer()',source)
+        self.assertIn('performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)',source)
+        self.assertIn('PICKER_ROOTS_DRAWER_CLOSED',source)
+        self.assertNotIn('clickNative(\"Show roots\");continue;',source)
         self.assertLess(downloads,singular)
         self.assertLess(singular,videos)  # Seeded Download is preferred; Videos is fallback.
     def test_picker_wait_scrolls_until_exact_fixture_is_visible(self):

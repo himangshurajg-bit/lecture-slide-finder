@@ -86,6 +86,23 @@ public class RuntimeChecks extends Instrumentation {
   if(list!=null){clickNative("List view");log("PICKER list view confirmed by Grid view toggle");}
  }
  boolean rootsDrawerOpen(AccessibilityNodeInfo root){return find(root,"Open from")!=null;}
+ void closePickerRootsDrawer()throws Exception{
+  AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+  if(!isDocumentsPicker(root)||!rootsDrawerOpen(root))return;
+  // The toolbar's Show roots action can be obscured by the open drawer on
+  // legacy and current DocumentsUI. Back dismisses the overlay without
+  // changing the selected source.
+  if(!getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK))
+   throw new Exception("Could not dismiss DocumentsUI roots drawer with Back; controls="+nativeTree(root,0));
+  long deadline=System.currentTimeMillis()+5000;
+  while(System.currentTimeMillis()<deadline){
+   root=getUiAutomation().getRootInActiveWindow();
+   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)){log("PICKER_ROOTS_DRAWER_CLOSED title="+documentsPickerTitle(root));return;}
+   Thread.sleep(200);
+  }
+  root=getUiAutomation().getRootInActiveWindow();
+  throw new Exception("DocumentsUI roots drawer stayed open after Back; controls="+nativeTree(root,0));
+ }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);
   return bounds.intersect(window)&&!bounds.isEmpty();
@@ -135,7 +152,7 @@ public class RuntimeChecks extends Instrumentation {
   // If the drawer is open over the requested directory, close it rather than
   // tapping the same root again. Rows behind the drawer are not a valid route.
   if("Downloads".equals(title)||"Download".equals(title)){
-   clickNative("Show roots");waitForPickerFixture(fixture);log("PICKER_NAVIGATION_CONFIRMED "+title+" fixture="+fixture);return;
+   closePickerRootsDrawer();waitForPickerFixture(fixture);log("PICKER_NAVIGATION_CONFIRMED "+title+" fixture="+fixture);return;
   }
   String entry=null;
   // Choose a root from the drawer itself, not matching text in the obscured
@@ -150,7 +167,7 @@ public class RuntimeChecks extends Instrumentation {
   while(System.currentTimeMillis()<deadline){
    root=getUiAutomation().getRootInActiveWindow();
    if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&entry.equals(documentsPickerTitle(root)))break;
-   if(isDocumentsPicker(root)&&rootsDrawerOpen(root)&&entry.equals(documentsPickerTitle(root))){clickNative("Show roots");continue;}
+   if(isDocumentsPicker(root)&&rootsDrawerOpen(root)&&entry.equals(documentsPickerTitle(root))){closePickerRootsDrawer();continue;}
    Thread.sleep(250);
   }
   root=getUiAutomation().getRootInActiveWindow();
