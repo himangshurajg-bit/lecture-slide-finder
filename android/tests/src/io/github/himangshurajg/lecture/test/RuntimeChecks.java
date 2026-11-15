@@ -63,7 +63,10 @@ public class RuntimeChecks extends Instrumentation {
   long deadline=System.currentTimeMillis()+12000;
   while(System.currentTimeMillis()<deadline){
    AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
-   if("Downloads".equals(name)&&isDocumentsPicker(root)&&find(root,"Downloads")!=null&&find(root,"Recent")==null){log("PICKER_NAVIGATION_CONFIRMED Downloads");return;}
+   // DocumentsUI may leave its roots drawer open after navigation. Confirm the
+   // actual Downloads location by its title and a known fixture, not by requiring
+   // the unrelated Recent drawer entry to disappear.
+   if("Downloads".equals(name)&&isDocumentsPicker(root)&&find(root,"Downloads")!=null&&find(root,"lecture.mp4")!=null){log("PICKER_NAVIGATION_CONFIRMED Downloads fixture=lecture.mp4");return;}
    if("List view".equals(name)&&isDocumentsPicker(root)&&find(root,"Grid view")!=null&&find(root,"List view")==null){log("PICKER_LAYOUT_CONFIRMED list");return;}
    Thread.sleep(400);
   }
@@ -148,9 +151,18 @@ public class RuntimeChecks extends Instrumentation {
   if(isDocumentsPicker(root)){String tree=nativeTree(root,0);capturePickerEvidence(name+"-confirm");log("PICKER_CONFIRM_DID_NOT_CLOSE "+name+" controls="+tree);throw new Exception("Picker confirmation did not close for "+name+"; "+tree);}
   log("CLICK picker confirmation for "+name+" package="+pkg);
  }
+ boolean dismissInputMethod(){
+  for(AccessibilityWindowInfo window:getUiAutomation().getWindows())if(window.getType()==AccessibilityWindowInfo.TYPE_INPUT_METHOD){
+   boolean dismissed=getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK);
+   log("SOFT_KEYBOARD_PRESENT before native Save; backAction="+dismissed);
+   return true;
+  }
+  return false;
+ }
  void clickNative(String name)throws Exception{
-  long deadline=System.currentTimeMillis()+90000;int scrolls=0;
+  long deadline=System.currentTimeMillis()+90000;int scrolls=0;boolean keyboardDismissed=false;
   while(System.currentTimeMillis()<deadline){
+   if("Save".equals(name)&&!keyboardDismissed&&dismissInputMethod()){keyboardDismissed=true;Thread.sleep(500);continue;}
    AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow(),n=find(root,name);
    if(n!=null){
     android.graphics.Rect bounds=new android.graphics.Rect(),viewport=new android.graphics.Rect();n.getBoundsInScreen(bounds);if(root!=null)root.getBoundsInScreen(viewport);
@@ -178,6 +190,7 @@ public class RuntimeChecks extends Instrumentation {
    else if(scrolls<12 && scrollNative(root)){scrolls++;log("SCROLL to native control "+name);}
    Thread.sleep(1000);
   }
+  if("Save".equals(name))capturePickerEvidence("missing-control-Save");
   log("ROOT "+getUiAutomation().getRootInActiveWindow());throw new Exception("Visible native control not found: "+name);
  }
  @Override public void onStart(){Bundle result=new Bundle();try{
