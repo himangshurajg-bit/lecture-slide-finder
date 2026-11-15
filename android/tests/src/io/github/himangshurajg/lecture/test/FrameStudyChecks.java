@@ -2,14 +2,15 @@ package io.github.himangshurajg.lecture.test;
 import android.app.*;import android.content.*;import android.os.*;import android.webkit.*;import android.net.Uri;import android.media.*;import java.io.*;import java.lang.reflect.*;import java.util.concurrent.atomic.AtomicBoolean;import org.json.*;
 /** Original six-frame B-frame fixture; proves sequential output/PTS independently of gallery UI. */
 public final class FrameStudyChecks extends RuntimeChecks {
+ String ocrProgress()throws Exception{return js("JSON.stringify((function(){var e=document.querySelector('#ocr-state'),d=JSON.parse(localStorage.getItem('lecture-frame-study-v1')||'{}');return {state:e?e.textContent:'',checked:d.checked||0,points:d.points?d.points.length:0};})())");}
  void awaitOcr(String name)throws Exception{
   log("AWAIT "+name);long deadline=System.currentTimeMillis()+180000,nextLog=System.currentTimeMillis();
   while(System.currentTimeMillis()<deadline){
    if("true".equals(js("document.querySelector('#ocr-state').textContent.includes('Complete decoded-frame pass: 6')"))){log("PASS "+name);return;}
-   long now=System.currentTimeMillis();if(now>=nextLog){String status=js("JSON.stringify({state:document.querySelector('#ocr-state')?.textContent||'', checked:JSON.parse(localStorage.getItem('lecture-frame-study-v1')||'{}').checked||0, points:JSON.parse(localStorage.getItem('lecture-frame-study-v1')||'{}').points?.length||0})");log("OCR_PROGRESS "+status);nextLog=now+15000;}
+   long now=System.currentTimeMillis();if(now>=nextLog){log("OCR_PROGRESS "+ocrProgress());nextLog=now+15000;}
    Thread.sleep(1000);
   }
-  String status=js("JSON.stringify({state:document.querySelector('#ocr-state')?.textContent||'', checked:JSON.parse(localStorage.getItem('lecture-frame-study-v1')||'{}').checked||0, points:JSON.parse(localStorage.getItem('lecture-frame-study-v1')||'{}').points?.length||0})");
+  String status=ocrProgress();
   throw new Exception("Timeout: "+name+"; "+status);
  }
  @Override public void onStart(){Bundle result=new Bundle();Object decoder=null;try{

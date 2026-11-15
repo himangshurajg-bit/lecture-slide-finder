@@ -57,7 +57,7 @@ public class RuntimeChecks extends Instrumentation {
  }
  String nativeTree(AccessibilityNodeInfo n,int depth){
   if(n==null||depth>20)return "";StringBuilder b=new StringBuilder();CharSequence t=n.getText(),d=n.getContentDescription();
-  if((t!=null&&!t.toString().isEmpty())||(d!=null&&!d.toString().isEmpty()))b.append("["+t+"|"+d+" clickable="+n.isClickable()+" enabled="+n.isEnabled()+" selected="+n.isSelected()+"] ");
+  if((t!=null&&!t.toString().isEmpty())||(d!=null&&!d.toString().isEmpty())){android.graphics.Rect r=new android.graphics.Rect();n.getBoundsInScreen(r);b.append("["+n.getClassName()+" "+t+"|"+d+" bounds="+r+" clickable="+n.isClickable()+" enabled="+n.isEnabled()+" selected="+n.isSelected()+"] ");}
   for(int i=0;i<n.getChildCount();i++)b.append(nativeTree(n.getChild(i),depth+1));return b.toString();
  }
  void logExtractorPts(Uri uri,String label,int limit)throws Exception{
@@ -78,12 +78,15 @@ public class RuntimeChecks extends Instrumentation {
   try{return getUiAutomation().injectInputEvent(down,true)&&getUiAutomation().injectInputEvent(up,true);}finally{down.recycle();up.recycle();}
  }
  boolean isDocumentsPicker(AccessibilityNodeInfo root){return root!=null&&root.getPackageName()!=null&&root.getPackageName().toString().toLowerCase().contains("documentsui");}
+ void capturePickerEvidence(String name){
+  try{android.graphics.Bitmap image=getUiAutomation().takeScreenshot();if(image==null)return;String safe=name.replaceAll("[^A-Za-z0-9_-]","_");java.io.File file=new java.io.File(getTargetContext().getExternalFilesDir(null),"picker-capture-"+safe+".png");try(java.io.FileOutputStream out=new java.io.FileOutputStream(file)){image.compress(android.graphics.Bitmap.CompressFormat.PNG,100,out);}finally{image.recycle();}log("PICKER_SCREENSHOT "+file.getName());}catch(Exception e){log("PICKER_SCREENSHOT_ERROR "+e.getClass().getSimpleName()+": "+e.getMessage());}
+ }
  void afterNativeFileClick(String name)throws Exception{
   if(!name.endsWith(".mp4")&&!name.endsWith(".srt"))return;
   Thread.sleep(1200);AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
   String pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
   if(!isDocumentsPicker(root)){log("PICKER_CLOSED_AFTER_FILE_CLICK "+name+" package="+pkg);return;}
-  log("PICKER_REMAINS_AFTER_FILE_CLICK "+name+" controls="+nativeTree(root,0));
+  log("PICKER_REMAINS_AFTER_FILE_CLICK "+name+" controls="+nativeTree(root,0));capturePickerEvidence(name);
   AccessibilityNodeInfo confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
   if(confirm==null){
    // Recent DocumentsUI versions expose the filename inside a clickable
