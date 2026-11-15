@@ -66,7 +66,11 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertIn('void waitForDocumentsPicker()',source)
         self.assertIn('waitForPickerRootChoice("Downloads","Download","Videos","Recent")',source)
         self.assertIn('waitForPickerFixture(fixture)',source)
-        self.assertIn('if(fixture.endsWith(".mp4")&&visiblePickerText(root,"Videos"))entry="Videos";',source)
+        downloads=source.index('if(visiblePickerText(root,"Downloads"))entry="Downloads";')
+        singular=source.index('else if(visiblePickerText(root,"Download"))entry="Download";')
+        videos=source.index('else if(fixture.endsWith(".mp4")&&visiblePickerText(root,"Videos"))entry="Videos";')
+        self.assertLess(downloads,singular)
+        self.assertLess(singular,videos)  # Seeded Download is preferred; Videos is fallback.
     def test_speech_ui_requires_search_and_export_readback(self):
         source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/AsrUiChecks.java').read_text()
         runner=(ROOT/'android/ci/run-android.py').read_text()

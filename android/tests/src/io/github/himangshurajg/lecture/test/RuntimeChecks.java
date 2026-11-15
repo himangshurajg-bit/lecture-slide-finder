@@ -124,11 +124,11 @@ public class RuntimeChecks extends Instrumentation {
    clickNative("Show roots");waitForPickerFixture(fixture);log("PICKER_NAVIGATION_CONFIRMED Recent fixture="+fixture);return;
   }
   String entry=null;
-  // Video-only pickers may expose a Videos root while omitting Downloads. Use
-  // the requested source only when it is actually visible; retain exact fixture checks.
-  if(fixture.endsWith(".mp4")&&visiblePickerText(root,"Videos"))entry="Videos";
-  else if(visiblePickerText(root,"Downloads"))entry="Downloads";
+  // Prefer the seeded Download directory when available; use Videos only as
+  // a fallback on pickers that omit Downloads. Keep exact fixture checks.
+  if(visiblePickerText(root,"Downloads"))entry="Downloads";
   else if(visiblePickerText(root,"Download"))entry="Download";
+  else if(fixture.endsWith(".mp4")&&visiblePickerText(root,"Videos"))entry="Videos";
   else if(visiblePickerText(root,"Recent"))entry="Recent";
   if(entry==null)throw new Exception("DocumentsUI has no visible Videos, Recent, or Downloads source for "+fixture+"; controls="+nativeTree(root,0));
   clickNative(entry);waitForPickerFixture(fixture);log("PICKER_NAVIGATION_CONFIRMED "+entry+" fixture="+fixture);
