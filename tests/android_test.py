@@ -66,9 +66,13 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertIn('void waitForDocumentsPicker()',source)
         self.assertIn('waitForPickerRootChoice("Downloads","Download","Videos","Recent")',source)
         self.assertIn('waitForPickerFixture(fixture)',source)
-        downloads=source.index('if(visiblePickerText(root,"Downloads"))entry="Downloads";')
-        singular=source.index('else if(visiblePickerText(root,"Download"))entry="Download";')
-        videos=source.index('else if(fixture.endsWith(".mp4")&&visiblePickerText(root,"Videos"))entry="Videos";')
+        downloads=source.index('if(visiblePickerRoot(root,"Downloads"))entry="Downloads";')
+        singular=source.index('else if(visiblePickerRoot(root,"Download"))entry="Download";')
+        videos=source.index('else if(fixture.endsWith(".mp4")&&visiblePickerRoot(root,"Videos"))entry="Videos";')
+        self.assertIn('boolean visiblePickerRoot(',source)
+        self.assertIn('findLast(root,text)',source)
+        self.assertNotIn('Recent fixture="+fixture',source)  # Obscured rows cannot select a root.
+        self.assertIn('isPickerRoot(name)&&isDocumentsPicker(root)&&rootsDrawerOpen(root)',source)
         self.assertLess(downloads,singular)
         self.assertLess(singular,videos)  # Seeded Download is preferred; Videos is fallback.
     def test_picker_wait_scrolls_until_exact_fixture_is_visible(self):

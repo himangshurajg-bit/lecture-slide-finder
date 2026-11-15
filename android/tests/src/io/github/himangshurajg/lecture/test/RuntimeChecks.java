@@ -91,6 +91,8 @@ public class RuntimeChecks extends Instrumentation {
   return bounds.intersect(window)&&!bounds.isEmpty();
  }
  boolean visiblePickerText(AccessibilityNodeInfo root,String text){return inPickerWindow(root,find(root,text));}
+ boolean visiblePickerRoot(AccessibilityNodeInfo root,String text){return rootsDrawerOpen(root)&&inPickerWindow(root,findLast(root,text));}
+ boolean isPickerRoot(String name){return "Downloads".equals(name)||"Download".equals(name)||"Videos".equals(name)||"Recent".equals(name);}
  boolean atDownloadsDirectory(AccessibilityNodeInfo root){
   return isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&("Downloads".equals(documentsPickerTitle(root))||"Download".equals(documentsPickerTitle(root)));
  }
@@ -103,7 +105,7 @@ public class RuntimeChecks extends Instrumentation {
  void waitForPickerRootChoice(String... labels)throws Exception{
   long deadline=System.currentTimeMillis()+12000;
   while(System.currentTimeMillis()<deadline){AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
-   if(isDocumentsPicker(root)&&rootsDrawerOpen(root))for(String label:labels)if(visiblePickerText(root,label)){log("PICKER_ROOT_VISIBLE "+label);return;}
+   if(isDocumentsPicker(root)&&rootsDrawerOpen(root))for(String label:labels)if(visiblePickerRoot(root,label)){log("PICKER_ROOT_VISIBLE "+label);return;}
    Thread.sleep(300);
   }
   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();throw new Exception("DocumentsUI roots drawer did not expose a usable source; controls="+nativeTree(root,0));
@@ -129,20 +131,31 @@ public class RuntimeChecks extends Instrumentation {
   if(!rootsDrawerOpen(root)&&visiblePickerText(root,fixture)){log("PICKER_FIXTURE_VISIBLE "+fixture+" title="+documentsPickerTitle(root)+" already-open=true");return;}
   if(!rootsDrawerOpen(root)){AccessibilityNodeInfo show=find(root,"Show roots");if(show==null)throw new Exception("DocumentsUI is active but Show roots is unavailable; controls="+nativeTree(root,0));clickNative("Show roots");}
   waitForPickerRootChoice("Downloads","Download","Videos","Recent");root=getUiAutomation().getRootInActiveWindow();
-  // Recent may already contain the exact selected fixture behind the drawer;
-  // close it and retain the normal picker selection path rather than guessing a root.
-  if(visiblePickerText(root,fixture)){
-   clickNative("Show roots");waitForPickerFixture(fixture);log("PICKER_NAVIGATION_CONFIRMED Recent fixture="+fixture);return;
+  String title=documentsPickerTitle(root);
+  // If the drawer is open over the requested directory, close it rather than
+  // tapping the same root again. Rows behind the drawer are not a valid route.
+  if("Downloads".equals(title)||"Download".equals(title)){
+   clickNative("Show roots");waitForPickerFixture(fixture);log("PICKER_NAVIGATION_CONFIRMED "+title+" fixture="+fixture);return;
   }
   String entry=null;
-  // Prefer the seeded Download directory when available; use Videos only as
-  // a fallback on pickers that omit Downloads. Keep exact fixture checks.
-  if(visiblePickerText(root,"Downloads"))entry="Downloads";
-  else if(visiblePickerText(root,"Download"))entry="Download";
-  else if(fixture.endsWith(".mp4")&&visiblePickerText(root,"Videos"))entry="Videos";
-  else if(visiblePickerText(root,"Recent"))entry="Recent";
+  // Choose a root from the drawer itself, not matching text in the obscured
+  // page. Prefer seeded Downloads; Videos and Recent are picker fallbacks.
+  if(visiblePickerRoot(root,"Downloads"))entry="Downloads";
+  else if(visiblePickerRoot(root,"Download"))entry="Download";
+  else if(fixture.endsWith(".mp4")&&visiblePickerRoot(root,"Videos"))entry="Videos";
+  else if(visiblePickerRoot(root,"Recent"))entry="Recent";
   if(entry==null)throw new Exception("DocumentsUI has no visible Videos, Recent, or Downloads source for "+fixture+"; controls="+nativeTree(root,0));
-  clickNative(entry);waitForPickerFixture(fixture);log("PICKER_NAVIGATION_CONFIRMED "+entry+" fixture="+fixture);
+  clickNative(entry);
+  long deadline=System.currentTimeMillis()+12000;
+  while(System.currentTimeMillis()<deadline){
+   root=getUiAutomation().getRootInActiveWindow();
+   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&entry.equals(documentsPickerTitle(root)))break;
+   if(isDocumentsPicker(root)&&rootsDrawerOpen(root)&&entry.equals(documentsPickerTitle(root))){clickNative("Show roots");continue;}
+   Thread.sleep(250);
+  }
+  root=getUiAutomation().getRootInActiveWindow();
+  if(!isDocumentsPicker(root)||rootsDrawerOpen(root)||!entry.equals(documentsPickerTitle(root)))throw new Exception("DocumentsUI did not navigate to "+entry+"; controls="+nativeTree(root,0));
+  waitForPickerFixture(fixture);log("PICKER_NAVIGATION_CONFIRMED "+entry+" fixture="+fixture);
  }
  void verifyNativeControl(String name)throws Exception{
   if(!"Downloads".equals(name)&&!"Download".equals(name)&&!"List view".equals(name))return;
@@ -258,7 +271,7 @@ public class RuntimeChecks extends Instrumentation {
    AccessibilityNodeInfo n=find(root,name);
    // The toolbar title and drawer row may share a name. When the roots drawer
    // is open, choose its later entry rather than treating the toolbar as a tap.
-   if(("Downloads".equals(name)||"Download".equals(name))&&isDocumentsPicker(root)&&rootsDrawerOpen(root)){
+   if(isPickerRoot(name)&&isDocumentsPicker(root)&&rootsDrawerOpen(root)){
     AccessibilityNodeInfo drawerEntry=findLast(root,name);if(drawerEntry!=null)n=drawerEntry;
    }
    if(n!=null){
@@ -269,18 +282,19 @@ public class RuntimeChecks extends Instrumentation {
      AccessibilityNodeInfo target=n;
      while(target!=null && !target.isClickable())target=target.getParent();
      boolean fileItem=name.endsWith(".mp4")||name.endsWith(".srt");
+     boolean pickerRootItem=isPickerRoot(name)&&isDocumentsPicker(root)&&rootsDrawerOpen(root);
      if(fileItem){
       Rect labelBounds=new Rect();n.getBoundsInScreen(labelBounds);
       if(injectNativeTap(labelBounds)){afterNativeFileClick(name);log("TOUCH native file label "+name);return;}
      }else if(target!=null && target.isEnabled() && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)){
-      verifyNativeControl(name);afterNativeFileClick(name);log("CLICK accessible control "+name);return;
+      if(!pickerRootItem)verifyNativeControl(name);afterNativeFileClick(name);log("CLICK accessible control "+name);return;
      }
      Rect tapBounds=new Rect();(target==null?n:target).getBoundsInScreen(tapBounds);
      if(!tapBounds.intersect(viewport)||tapBounds.isEmpty())tapBounds.set(bounds);
      long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,tapBounds.centerX(),tapBounds.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,tapBounds.centerX(),tapBounds.centerY(),0);
      boolean sent=getUiAutomation().injectInputEvent(d,true) && getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();
      if(!sent)throw new Exception("Native touch injection refused: "+name);
-     Thread.sleep(1000);verifyNativeControl(name);afterNativeFileClick(name);log("CLICK "+name);return;
+     Thread.sleep(1000);if(!pickerRootItem)verifyNativeControl(name);afterNativeFileClick(name);log("CLICK "+name);return;
     }
    }
    AccessibilityNodeInfo wait=find(root,"Wait");if(wait!=null){wait.performAction(AccessibilityNodeInfo.ACTION_CLICK);log("ENV System UI wait dialog dismissed");}
