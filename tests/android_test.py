@@ -42,9 +42,10 @@ class AndroidBoundaryTests(unittest.TestCase):
     def test_native_taps_map_visual_viewport_at_actual_page_scale(self):
         source=(ROOT/'android/tests/src/io/github/himangshurajg/lecture/test/RuntimeChecks.java').read_text()
         self.assertIn('web.getScale()',source)
-        self.assertIn('visualViewport?.offsetLeft',source)
-        self.assertIn('visualViewport?.offsetTop',source)
+        self.assertIn('visualViewport.offsetLeft',source)
+        self.assertIn('visualViewport.offsetTop',source)
         self.assertIn('trusted touch reached',source)
+        self.assertNotIn('?.',source)  # Test snippets must parse in API 26's Chromium 69.
         self.assertNotIn('web.getPaddingTop()+(float)a.getDouble(1)*scale',source)
         # Reproduce the native receipt: x360,y857 missed at CSS137.14,406.52.
         scale, offset_y = 2.625, 80

@@ -13,11 +13,11 @@ public class RuntimeChecks extends Instrumentation {
  void tapWeb(String selector)throws Exception{tapWeb(selector,false);}
  void tapWeb(String selector,boolean immediate)throws Exception{
   js("document.querySelector("+JSONObject.quote(selector)+").scrollIntoView({block:'center',behavior:'instant'})");if(!immediate)Thread.sleep(1000);
-  js("window.__testTouch=[];for(const t of ['pointerdown','pointerup','click'])document.addEventListener(t,e=>window.__testTouch.push([e.type,e.isTrusted,e.clientX,e.clientY,e.target.outerHTML?.slice(0,150),!!e.target.closest("+JSONObject.quote(selector)+")]),{capture:true,once:true})");
+  js("window.__testTouch=[];for(const t of ['pointerdown','pointerup','click'])document.addEventListener(t,e=>window.__testTouch.push([e.type,e.isTrusted,e.clientX,e.clientY,e.target.outerHTML?e.target.outerHTML.slice(0,150):null,!!e.target.closest("+JSONObject.quote(selector)+")]),{capture:true,once:true})");
   android.graphics.Bitmap before=immediate?null:getUiAutomation().takeScreenshot();if(before!=null){try(java.io.FileOutputStream file=new java.io.FileOutputStream(new java.io.File(getTargetContext().getExternalFilesDir(null),"web-tap.png"))){before.compress(android.graphics.Bitmap.CompressFormat.PNG,100,file);}before.recycle();}
-  String raw=js("JSON.stringify((()=>{const e=document.querySelector("+JSONObject.quote(selector)+");const r=e.getBoundingClientRect();const x=r.left+r.width/2,y=r.top+r.height/2;const hit=document.elementFromPoint(x,y);return [x,y,innerWidth,!!hit&&(e===hit||e.contains(hit)),e.disabled,hit?.outerHTML.slice(0,250),visualViewport?.offsetLeft||0,visualViewport?.offsetTop||0,visualViewport?.scale||1,devicePixelRatio]})())");
+  String raw=js("JSON.stringify((()=>{const e=document.querySelector("+JSONObject.quote(selector)+");const r=e.getBoundingClientRect();const x=r.left+r.width/2,y=r.top+r.height/2;const hit=document.elementFromPoint(x,y);return [x,y,innerWidth,!!hit&&(e===hit||e.contains(hit)),e.disabled,(hit&&hit.outerHTML?hit.outerHTML.slice(0,250):null),window.visualViewport?visualViewport.offsetLeft:0,window.visualViewport?visualViewport.offsetTop:0,window.visualViewport?visualViewport.scale:1,devicePixelRatio]})())");
   log("WEB_TAP "+selector+" "+raw);
-  Object parsed=new JSONTokener(raw).nextValue();JSONArray a=parsed instanceof JSONArray?(JSONArray)parsed:new JSONArray((String)parsed);
+  if(raw==null)throw new Exception("WebView returned no tap geometry for "+selector);Object parsed=new JSONTokener(raw).nextValue();if(parsed instanceof JSONArray){}else if(parsed instanceof String)parsed=new JSONArray((String)parsed);else throw new Exception("Unexpected WebView tap geometry for "+selector+": "+raw);JSONArray a=(JSONArray)parsed;
   if(!a.getBoolean(3)||a.optBoolean(4))throw new Exception("Web control obscured or disabled: "+selector);
   final int[] origin=new int[2];runOnMainSync(()->web.getLocationOnScreen(origin));
   // CSS client coordinates are layout-viewport coordinates. WebView's actual
@@ -37,7 +37,7 @@ public class RuntimeChecks extends Instrumentation {
   sent=getUiAutomation().injectInputEvent(up,true)&&sent;up.recycle();
   if(!sent)throw new Exception("Web touch injection refused: "+selector);
   if(!immediate)Thread.sleep(1500);
-  log("WEB_TOUCH_RECEIPT "+selector+" "+js("JSON.stringify({events:window.__testTouch,viewport:[innerWidth,innerHeight,devicePixelRatio,visualViewport?.offsetTop,scrollY]})"));
+  log("WEB_TOUCH_RECEIPT "+selector+" "+js("JSON.stringify({events:window.__testTouch,viewport:[innerWidth,innerHeight,devicePixelRatio,window.visualViewport?visualViewport.offsetTop:0,scrollY]})"));
   // Chromium's built-in media controls can consume pointer events in UA shadow
   // DOM. For video, require the actual native touch to start decoded playback,
   // rather than incorrectly requiring a document-level pointerdown receipt.

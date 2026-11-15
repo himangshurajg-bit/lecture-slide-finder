@@ -15,5 +15,12 @@ describe('legacy WebView globalThis compatibility', () => {
 
     expect(runInContext('typeof globalThis', context)).toBe('object');
     expect(runInContext('globalThis === window', context)).toBe(true);
+    expect(runInContext('typeof window.regeneratorRuntime', context)).toBe('object');
+
+    // Match regenerator-runtime's strict global assignment on Chrome 69, where
+    // globalThis is still absent and CSP blocks its Function() fallback.
+    runInContext('delete globalThis; Function = function () { throw new Error(\"CSP eval reached\"); };', context);
+    runInContext('try { regeneratorRuntime = { ready: true }; } catch (e) { if (typeof globalThis === \"object\") globalThis.regeneratorRuntime = { ready: true }; else Function(\"r\", \"regeneratorRuntime = r\")({ ready: true }); }', context);
+    expect(runInContext('regeneratorRuntime.ready', context)).toBe(true);
   });
 });

@@ -9,7 +9,7 @@ public final class FrameStressChecks extends RuntimeChecks {
   decoder=type.getConstructor(android.content.Context.class,Uri.class).newInstance(getTargetContext(),Uri.fromFile(source));
   AtomicBoolean cancel=new AtomicBoolean(false);int count=0,maxPss=0,maxBatchBytes=0;boolean done=false;long start=SystemClock.elapsedRealtime();
   while(!done){JSONObject batch=(JSONObject)type.getMethod("page",int.class,AtomicBoolean.class).invoke(decoder,4,cancel);JSONArray frames=batch.getJSONArray("frames");if(frames.length()>4)throw new Exception("Unbounded batch");maxBatchBytes=Math.max(maxBatchBytes,batch.toString().length());
-   for(int i=0;i<frames.length();i++){JSONObject frame=frames.getJSONObject(i);if(frame.getInt("index")!=count||Math.abs(frame.getDouble("time")-count/15.0)>.001)throw new Exception("Missing or reordered frame "+count);count++;}done=batch.getBoolean("done");if(count>900)throw new Exception("Duplicate frame");
+   for(int i=0;i<frames.length();i++){JSONObject frame=frames.getJSONObject(i);double actualTime=frame.getDouble("time"),expectedTime=count/15.0;if(frame.getInt("index")!=count||Math.abs(actualTime-expectedTime)>.001)throw new Exception("Missing/reordered frame "+count+" time="+actualTime+" expected_time="+expectedTime);count++;}done=batch.getBoolean("done");if(count>900)throw new Exception("Duplicate frame");
    if(count%100==0){android.os.Debug.MemoryInfo mem=new android.os.Debug.MemoryInfo();android.os.Debug.getMemoryInfo(mem);maxPss=Math.max(maxPss,mem.getTotalPss());log("STRESS_PROGRESS frames="+count+" pss_kib="+mem.getTotalPss());}
   }
   if(count!=900)throw new Exception("Expected 900 frames, got "+count);
