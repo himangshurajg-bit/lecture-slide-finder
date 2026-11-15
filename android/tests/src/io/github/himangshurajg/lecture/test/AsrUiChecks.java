@@ -10,7 +10,7 @@ public final class AsrUiChecks extends RuntimeChecks {
   Intent i=new Intent().setClassName(getTargetContext(),"io.github.himangshurajg.lecture.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);activity=startActivitySync(i);java.lang.reflect.Field f=activity.getClass().getDeclaredField("web");f.setAccessible(true);web=(WebView)f.get(activity);
   await("!!document.querySelector('#demo')","speech UI launches");js("localStorage.clear();location.reload()");Thread.sleep(2000);await("!!document.querySelector('#demo')","speech clean state");
   check("document.querySelector('#asr-generate').disabled","speech requires chosen media");
-  tapWeb("[data-pick=video-file]");navigateToDownloads();preferNativeListView();clickNative("speech-"+language+".mp4");
+  tapWeb("[data-pick=video-file]");navigateToDownloads("speech-"+language+".mp4");preferNativeListView();clickNative("speech-"+language+".mp4");
   await("document.querySelector('#video').readyState>=1 && !document.querySelector('#asr-generate').disabled","chosen speech video accepted");
   js("document.querySelector('#asr-language').value='"+language+"'");tapWeb("#asr-generate");clickNative("Transcribe");
   await("document.querySelectorAll('.cue').length>0 && document.querySelector('#asr-status').textContent.includes('100%')","UI speech completion");
@@ -30,9 +30,9 @@ public final class AsrUiChecks extends RuntimeChecks {
   // Isolate active cancellation with a long public fixture. Keep a known prior
   // transcript/note and verify their exact preservation through the real user path.
   js("localStorage.clear();location.reload()");Thread.sleep(2000);await("!!document.querySelector('#demo')","cancellation clean state");
-  tapWeb("[data-pick=video-file]");navigateToDownloads();preferNativeListView();clickNative("cancel-long.mp4");
+  tapWeb("[data-pick=video-file]");navigateToDownloads("cancel-long.mp4");preferNativeListView();clickNative("cancel-long.mp4");
   await("document.querySelector('#video').duration>590 && !document.querySelector('#asr-generate').disabled","long cancellation media accepted");
-  tapWeb("[data-pick=transcript-file]");navigateToDownloads();preferNativeListView();clickNative("lecture.srt");
+  tapWeb("[data-pick=transcript-file]");navigateToDownloads("lecture.srt");preferNativeListView();clickNative("lecture.srt");
   await("document.querySelectorAll('.cue').length>0","previous transcript imported for cancellation");
   js("document.querySelector('.save').click()");
   String before=js("JSON.stringify([document.querySelector('#results').textContent,document.querySelector('#notes').textContent])");
