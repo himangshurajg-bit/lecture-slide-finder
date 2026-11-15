@@ -70,27 +70,43 @@ public class RuntimeChecks extends Instrumentation {
    for(int i=0;i<limit&&probe.getSampleTrackIndex()>=0;i++){log("INPUT_SAMPLE_PTS label="+label+" index="+i+" pts_us="+probe.getSampleTime()+" flags="+probe.getSampleFlags());if(!probe.advance())break;}
   }finally{probe.release();}
  }
+ boolean injectNativeTap(Rect bounds){
+  if(bounds==null||bounds.isEmpty())return false;long t=SystemClock.uptimeMillis();
+  android.view.MotionEvent down=android.view.MotionEvent.obtain(t,t,android.view.MotionEvent.ACTION_DOWN,bounds.centerX(),bounds.centerY(),0);
+  android.view.MotionEvent up=android.view.MotionEvent.obtain(t,t+90,android.view.MotionEvent.ACTION_UP,bounds.centerX(),bounds.centerY(),0);
+  down.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
+  try{return getUiAutomation().injectInputEvent(down,true)&&getUiAutomation().injectInputEvent(up,true);}finally{down.recycle();up.recycle();}
+ }
+ boolean isDocumentsPicker(AccessibilityNodeInfo root){return root!=null&&root.getPackageName()!=null&&root.getPackageName().toString().toLowerCase().contains("documentsui");}
  void afterNativeFileClick(String name)throws Exception{
   if(!name.endsWith(".mp4")&&!name.endsWith(".srt"))return;
   Thread.sleep(1200);AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
   String pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
-  if(!pkg.toLowerCase().contains("documentsui")){log("PICKER_CLOSED_AFTER_FILE_CLICK "+name+" package="+pkg);return;}
+  if(!isDocumentsPicker(root)){log("PICKER_CLOSED_AFTER_FILE_CLICK "+name+" package="+pkg);return;}
   log("PICKER_REMAINS_AFTER_FILE_CLICK "+name+" controls="+nativeTree(root,0));
   AccessibilityNodeInfo confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
   if(confirm==null){
-   // On older DocumentsUI, the first tap selects a row but does not return it.
-   // A second tap on the selected file opens it when no explicit Open/Select
-   // action is exposed. Recheck the package before touching anything again.
+   // Some older DocumentsUI builds don't deliver ACTION_CLICK on a filename's
+   // RecyclerView ancestor. Tap the actual visible filename through Android's
+   // input pipeline, then look again for a selection confirmation control.
    AccessibilityNodeInfo selected=find(root,name);
    if(selected!=null){
-    AccessibilityNodeInfo row=selected;while(row!=null&&!row.isClickable())row=row.getParent();
-    boolean opened=row!=null&&row.isEnabled()&&row.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-    if(!opened){Rect b=new Rect();(row==null?selected:row).getBoundsInScreen(b);if(!b.isEmpty()){long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,b.centerX(),b.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,b.centerX(),b.centerY(),0);opened=getUiAutomation().injectInputEvent(d,true)&&getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();}}
+    Rect labelBounds=new Rect();selected.getBoundsInScreen(labelBounds);boolean tapped=injectNativeTap(labelBounds);
     Thread.sleep(1200);root=getUiAutomation().getRootInActiveWindow();pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
-    log("PICKER_SECOND_FILE_TAP "+name+" clicked="+opened+" package="+pkg);
-    if(!pkg.toLowerCase().contains("documentsui"))return;
+    log("PICKER_COORDINATE_FILE_TAP "+name+" tapped="+tapped+" package="+pkg);
+    if(!isDocumentsPicker(root))return;
+    confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
+    if(confirm==null){
+     // If the picker exposes no action button, a second real touch emulates
+     // opening the now-selected row. Keep it on the exact filename bounds.
+     selected=find(root,name);labelBounds.setEmpty();if(selected!=null)selected.getBoundsInScreen(labelBounds);
+     boolean secondTap=injectNativeTap(labelBounds);Thread.sleep(1200);root=getUiAutomation().getRootInActiveWindow();pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
+     log("PICKER_SECOND_FILE_TAP "+name+" tapped="+secondTap+" package="+pkg);
+     if(!isDocumentsPicker(root))return;
+     confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
+    }
    }
-   log("PICKER_NO_OPEN_OR_SELECT_BUTTON "+name);return;
+   if(confirm==null){log("PICKER_NO_OPEN_OR_SELECT_BUTTON "+name+" file="+nativeTree(root,0));return;}
   }
   AccessibilityNodeInfo button=confirm;while(button!=null&&!button.isClickable())button=button.getParent();
   if(button==null||!button.isEnabled()){log("PICKER_CONFIRM_DISABLED "+name);return;}
@@ -105,11 +121,15 @@ public class RuntimeChecks extends Instrumentation {
    if(n!=null){
     android.graphics.Rect bounds=new android.graphics.Rect(),viewport=new android.graphics.Rect();n.getBoundsInScreen(bounds);if(root!=null)root.getBoundsInScreen(viewport);
     if(bounds.intersect(viewport) && !bounds.isEmpty()){
-     // DocumentsUI filename labels are not clickable; activate their real enabled
-     // card ancestor through Android accessibility, avoiding moving scroll coordinates.
+     // Keep the exact file label and its clickable ancestor: old DocumentsUI
+     // versions need a real touch at the label, while toolbar controls use accessibility.
      AccessibilityNodeInfo target=n;
      while(target!=null && !target.isClickable())target=target.getParent();
-     if(target!=null && target.isEnabled() && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)){
+     boolean fileItem=name.endsWith(".mp4")||name.endsWith(".srt");
+     if(fileItem){
+      Rect labelBounds=new Rect();n.getBoundsInScreen(labelBounds);
+      if(injectNativeTap(labelBounds)){afterNativeFileClick(name);log("TOUCH native file label "+name);return;}
+     }else if(target!=null && target.isEnabled() && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)){
       afterNativeFileClick(name);log("CLICK accessible control "+name);return;
      }
      Rect tapBounds=new Rect();(target==null?n:target).getBoundsInScreen(tapBounds);
