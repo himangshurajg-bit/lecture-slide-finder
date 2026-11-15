@@ -85,15 +85,38 @@ public class RuntimeChecks extends Instrumentation {
   AccessibilityNodeInfo list=find(getUiAutomation().getRootInActiveWindow(),"List view");
   if(list!=null){clickNative("List view");log("PICKER list view confirmed by Grid view toggle");}
  }
+ boolean rootsDrawerOpen(AccessibilityNodeInfo root){return find(root,"Open from")!=null;}
+ boolean atDownloadsDirectory(AccessibilityNodeInfo root){
+  if(!isDocumentsPicker(root)||rootsDrawerOpen(root))return false;
+  String title=documentsPickerTitle(root);
+  return ("Downloads".equals(title)||"Download".equals(title))&&visibleDownloadsFixture(root)!=null;
+ }
+ void navigateToDownloads()throws Exception{
+  AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+  if(atDownloadsDirectory(root)){log("PICKER_NAVIGATION_CONFIRMED "+documentsPickerTitle(root)+" fixture="+visibleDownloadsFixture(root)+" already-open=true");return;}
+  if(!isDocumentsPicker(root))throw new Exception("Expected DocumentsUI before Downloads navigation");
+  if(!rootsDrawerOpen(root)){
+   // Some Android providers expose Downloads as a folder in the current root,
+   // while others list it in DocumentsUI's roots drawer.
+   AccessibilityNodeInfo folder=find(root,"Download");
+   if(folder!=null){clickNative("Download");root=getUiAutomation().getRootInActiveWindow();if(atDownloadsDirectory(root))return;}
+   if(!rootsDrawerOpen(root))clickNative("Show roots");
+  }
+  root=getUiAutomation().getRootInActiveWindow();
+  String entry=findLast(root,"Downloads")!=null?"Downloads":findLast(root,"Download")!=null?"Download":null;
+  if(entry==null)throw new Exception("DocumentsUI roots drawer has no Downloads/Download entry; controls="+nativeTree(root,0));
+  clickNative(entry);
+  root=getUiAutomation().getRootInActiveWindow();
+  if(!atDownloadsDirectory(root))throw new Exception("Downloads navigation did not open a visible fixture directory; controls="+nativeTree(root,0));
+ }
  void verifyNativeControl(String name)throws Exception{
-  if(!"Downloads".equals(name)&&!"List view".equals(name))return;
+  if(!"Downloads".equals(name)&&!"Download".equals(name)&&!"List view".equals(name))return;
   long deadline=System.currentTimeMillis()+12000;
   while(System.currentTimeMillis()<deadline){
    AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
-   // DocumentsUI can leave its roots drawer open. Read the actual toolbar
-   // title (not a matching Downloads entry in the drawer) and require a known
-   // fixture in the visible directory before confirming navigation.
-   if("Downloads".equals(name)&&isDocumentsPicker(root)&&"Downloads".equals(documentsPickerTitle(root))){String fixture=visibleDownloadsFixture(root);if(fixture!=null){log("PICKER_NAVIGATION_CONFIRMED Downloads title=Downloads fixture="+fixture);return;}}
+   // Confirm the actual toolbar directory and a visible fixture after the
+   // roots drawer has closed; a matching row underneath the drawer is not enough.
+   if(("Downloads".equals(name)||"Download".equals(name))&&atDownloadsDirectory(root)){log("PICKER_NAVIGATION_CONFIRMED "+documentsPickerTitle(root)+" fixture="+visibleDownloadsFixture(root));return;}
    if("List view".equals(name)&&isDocumentsPicker(root)&&find(root,"Grid view")!=null&&find(root,"List view")==null){log("PICKER_LAYOUT_CONFIRMED list");return;}
    Thread.sleep(400);
   }
@@ -194,14 +217,15 @@ public class RuntimeChecks extends Instrumentation {
    // Some picker versions open directly in Downloads. Confirm the actual
    // toolbar title and a visible known fixture; don't click a non-clickable
    // title or weaken the later real file-selection check.
-   if("Downloads".equals(name)&&isDocumentsPicker(root)&&"Downloads".equals(documentsPickerTitle(root))){
-    String fixture=visibleDownloadsFixture(root);
-    if(fixture!=null){log("PICKER_NAVIGATION_CONFIRMED Downloads title=Downloads fixture="+fixture+" already-open=true");return;}
+   if(("Downloads".equals(name)||"Download".equals(name))&&atDownloadsDirectory(root)){
+    log("PICKER_NAVIGATION_CONFIRMED "+documentsPickerTitle(root)+" fixture="+visibleDownloadsFixture(root)+" already-open=true");return;
    }
    AccessibilityNodeInfo n=find(root,name);
-   // The toolbar title and drawer row can share the exact text "Downloads".
-   // While the roots drawer is open, click its later tree entry, not the title.
-   if("Downloads".equals(name)&&isDocumentsPicker(root)&&find(root,"Open from")!=null){AccessibilityNodeInfo drawerEntry=findLast(root,name);if(drawerEntry!=null)n=drawerEntry;}
+   // The toolbar title and drawer row may share a name. When the roots drawer
+   // is open, choose its later entry rather than treating the toolbar as a tap.
+   if(("Downloads".equals(name)||"Download".equals(name))&&isDocumentsPicker(root)&&rootsDrawerOpen(root)){
+    AccessibilityNodeInfo drawerEntry=findLast(root,name);if(drawerEntry!=null)n=drawerEntry;
+   }
    if(n!=null){
     android.graphics.Rect bounds=new android.graphics.Rect(),viewport=new android.graphics.Rect();n.getBoundsInScreen(bounds);if(root!=null)root.getBoundsInScreen(viewport);
     if(bounds.intersect(viewport) && !bounds.isEmpty()){
@@ -241,10 +265,10 @@ public class RuntimeChecks extends Instrumentation {
   tapWeb("[data-pick=video-file]");Thread.sleep(5000);
   log("PICKER_READY");
   // A human-observed adb touch driver selects the fixture through the real OS picker.
-  log("SELECT_VIDEO"); clickNative("Show roots"); clickNative("Downloads"); clickNative("lecture.mp4");
+  log("SELECT_VIDEO"); navigateToDownloads(); clickNative("lecture.mp4");
   await("document.querySelector('#video').readyState>=1","native picked video metadata");
   tapWeb("#video"); await("document.querySelector('#video').currentTime>0 && document.querySelector('#video').videoWidth>0","native video decode and playback advances");js("document.querySelector('#video').pause()");
-  tapWeb("[data-pick=transcript-file]");Thread.sleep(2000);log("SELECT_TRANSCRIPT");clickNative("Show roots");clickNative("Downloads");clickNative("lecture.srt");
+  tapWeb("[data-pick=transcript-file]");Thread.sleep(2000);log("SELECT_TRANSCRIPT");navigateToDownloads();clickNative("lecture.srt");
   await("document.querySelector('#cue-count').textContent==='3 PASSAGES'","native transcript import");
   js("const q=document.querySelector('#query');q.value='Mass and';q.dispatchEvent(new Event('input'))");await("document.querySelectorAll('.cue').length===1","search imported transcript");
   js("document.querySelector('.time').click()");await("!document.querySelector('#frame-box').hidden","decoded matching frame");
