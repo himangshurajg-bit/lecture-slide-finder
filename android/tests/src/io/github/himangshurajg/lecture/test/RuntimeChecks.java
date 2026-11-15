@@ -10,6 +10,15 @@ public class RuntimeChecks extends Instrumentation {
  void check(String code,String name)throws Exception {log("CHECK "+name);String r=js(code);if(!"true".equals(r))throw new Exception(name+": "+r);log("PASS "+name);}
  void await(String code,String name)throws Exception{log("AWAIT "+name);long deadline=System.currentTimeMillis()+180000;while(System.currentTimeMillis()<deadline){if("true".equals(js(code))){log("PASS "+name);return;}Thread.sleep(1000);}throw new Exception("Timeout: "+name);}
  AccessibilityNodeInfo find(AccessibilityNodeInfo n,String name){if(n==null)return null;String t=""+n.getText(),d=""+n.getContentDescription();if((name.equalsIgnoreCase(t)||name.equalsIgnoreCase(d)) && n.isVisibleToUser()){android.graphics.Rect b=new android.graphics.Rect();n.getBoundsInScreen(b);if(!b.isEmpty())return n;}for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo found=find(n.getChild(i),name);if(found!=null)return found;}return null;}
+ AccessibilityNodeInfo findLast(AccessibilityNodeInfo n,String name){if(n==null)return null;AccessibilityNodeInfo result=null;String t=""+n.getText(),d=""+n.getContentDescription();if((name.equalsIgnoreCase(t)||name.equalsIgnoreCase(d))&&n.isVisibleToUser()){Rect b=new Rect();n.getBoundsInScreen(b);if(!b.isEmpty())result=n;}for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo found=findLast(n.getChild(i),name);if(found!=null)result=found;}return result;}
+ String visibleDownloadsFixture(AccessibilityNodeInfo root){
+  if(root==null)return null;Rect window=new Rect();root.getBoundsInScreen(window);
+  for(String name:new String[]{"frame-study.mp4","speech-en.mp4","speech-hi.mp4","cancel-long.mp4","lecture.mp4"}){
+   AccessibilityNodeInfo node=find(root,name);if(node==null)continue;Rect bounds=new Rect();node.getBoundsInScreen(bounds);
+   if(bounds.intersect(window)&&!bounds.isEmpty())return name;
+  }
+  return null;
+ }
  void tapWeb(String selector)throws Exception{tapWeb(selector,false);}
  void tapWeb(String selector,boolean immediate)throws Exception{
   js("document.querySelector("+JSONObject.quote(selector)+").scrollIntoView({block:'center',behavior:'instant'})");if(!immediate)Thread.sleep(1000);
@@ -66,7 +75,7 @@ public class RuntimeChecks extends Instrumentation {
    // DocumentsUI may leave its roots drawer open after navigation. Confirm the
    // actual Downloads location by its title and a known fixture, not by requiring
    // the unrelated Recent drawer entry to disappear.
-   if("Downloads".equals(name)&&isDocumentsPicker(root)&&find(root,"Downloads")!=null&&find(root,"lecture.mp4")!=null){log("PICKER_NAVIGATION_CONFIRMED Downloads fixture=lecture.mp4");return;}
+   if("Downloads".equals(name)&&isDocumentsPicker(root)&&find(root,"Open from")==null&&find(root,"Downloads")!=null){String fixture=visibleDownloadsFixture(root);if(fixture!=null){log("PICKER_NAVIGATION_CONFIRMED Downloads fixture="+fixture);return;}}
    if("List view".equals(name)&&isDocumentsPicker(root)&&find(root,"Grid view")!=null&&find(root,"List view")==null){log("PICKER_LAYOUT_CONFIRMED list");return;}
    Thread.sleep(400);
   }
@@ -164,6 +173,9 @@ public class RuntimeChecks extends Instrumentation {
   while(System.currentTimeMillis()<deadline){
    if("Save".equals(name)&&!keyboardDismissed&&dismissInputMethod()){keyboardDismissed=true;Thread.sleep(500);continue;}
    AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow(),n=find(root,name);
+   // The toolbar title and drawer row can share the exact text "Downloads".
+   // While the roots drawer is open, click its later tree entry, not the title.
+   if("Downloads".equals(name)&&isDocumentsPicker(root)&&find(root,"Open from")!=null){AccessibilityNodeInfo drawerEntry=findLast(root,name);if(drawerEntry!=null)n=drawerEntry;}
    if(n!=null){
     android.graphics.Rect bounds=new android.graphics.Rect(),viewport=new android.graphics.Rect();n.getBoundsInScreen(bounds);if(root!=null)root.getBoundsInScreen(viewport);
     if(bounds.intersect(viewport) && !bounds.isEmpty()){
