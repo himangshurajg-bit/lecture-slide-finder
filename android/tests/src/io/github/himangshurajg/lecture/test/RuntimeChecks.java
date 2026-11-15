@@ -11,15 +11,17 @@ public class RuntimeChecks extends Instrumentation {
  void await(String code,String name)throws Exception{log("AWAIT "+name);long deadline=System.currentTimeMillis()+180000;while(System.currentTimeMillis()<deadline){if("true".equals(js(code))){log("PASS "+name);return;}Thread.sleep(1000);}throw new Exception("Timeout: "+name);}
  AccessibilityNodeInfo find(AccessibilityNodeInfo n,String name){if(n==null)return null;String t=""+n.getText(),d=""+n.getContentDescription();if((name.equalsIgnoreCase(t)||name.equalsIgnoreCase(d)) && n.isVisibleToUser()){android.graphics.Rect b=new android.graphics.Rect();n.getBoundsInScreen(b);if(!b.isEmpty())return n;}for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo found=find(n.getChild(i),name);if(found!=null)return found;}return null;}
  AccessibilityNodeInfo findLast(AccessibilityNodeInfo n,String name){if(n==null)return null;AccessibilityNodeInfo result=null;String t=""+n.getText(),d=""+n.getContentDescription();if((name.equalsIgnoreCase(t)||name.equalsIgnoreCase(d))&&n.isVisibleToUser()){Rect b=new Rect();n.getBoundsInScreen(b);if(!b.isEmpty())result=n;}for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo found=findLast(n.getChild(i),name);if(found!=null)result=found;}return result;}
- AccessibilityNodeInfo findResourceId(AccessibilityNodeInfo node,String resourceId){
+ AccessibilityNodeInfo findDocumentsToolbar(AccessibilityNodeInfo node){
   if(node==null)return null;
-  if(resourceId.equals(node.getViewIdResourceName()))return node;
-  for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo found=findResourceId(node.getChild(i),resourceId);if(found!=null)return found;}
+  String resourceId=node.getViewIdResourceName();
+  // AOSP DocumentsUI uses com.android.documentsui, while some emulator images
+  // expose the Google package. Match the stable resource suffix, not a vendor.
+  if(resourceId!=null&&resourceId.endsWith(":id/toolbar"))return node;
+  for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo found=findDocumentsToolbar(node.getChild(i));if(found!=null)return found;}
   return null;
  }
  String documentsPickerTitle(AccessibilityNodeInfo root){
-  AccessibilityNodeInfo toolbar=findResourceId(root,"com.google.android.documentsui:id/toolbar");
-  return firstVisibleText(toolbar);
+  return firstVisibleText(findDocumentsToolbar(root));
  }
  String firstVisibleText(AccessibilityNodeInfo node){
   if(node==null)return null;
@@ -188,7 +190,15 @@ public class RuntimeChecks extends Instrumentation {
   long deadline=System.currentTimeMillis()+90000;int scrolls=0;boolean keyboardDismissed=false;
   while(System.currentTimeMillis()<deadline){
    if("Save".equals(name)&&!keyboardDismissed&&dismissInputMethod()){keyboardDismissed=true;Thread.sleep(500);continue;}
-   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow(),n=find(root,name);
+   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+   // Some picker versions open directly in Downloads. Confirm the actual
+   // toolbar title and a visible known fixture; don't click a non-clickable
+   // title or weaken the later real file-selection check.
+   if("Downloads".equals(name)&&isDocumentsPicker(root)&&"Downloads".equals(documentsPickerTitle(root))){
+    String fixture=visibleDownloadsFixture(root);
+    if(fixture!=null){log("PICKER_NAVIGATION_CONFIRMED Downloads title=Downloads fixture="+fixture+" already-open=true");return;}
+   }
+   AccessibilityNodeInfo n=find(root,name);
    // The toolbar title and drawer row can share the exact text "Downloads".
    // While the roots drawer is open, click its later tree entry, not the title.
    if("Downloads".equals(name)&&isDocumentsPicker(root)&&find(root,"Open from")!=null){AccessibilityNodeInfo drawerEntry=findLast(root,name);if(drawerEntry!=null)n=drawerEntry;}
