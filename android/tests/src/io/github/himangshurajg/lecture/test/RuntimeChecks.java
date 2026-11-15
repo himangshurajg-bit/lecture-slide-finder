@@ -42,7 +42,10 @@ public class RuntimeChecks extends Instrumentation {
   // DOM. For video, require the actual native touch to start decoded playback,
   // rather than incorrectly requiring a document-level pointerdown receipt.
   if("#video".equals(selector))await("!document.querySelector('#video').paused && document.querySelector('#video').currentTime>0","trusted video touch starts playback");
-  else check("window.__testTouch.some(e=>e[0]==='pointerdown'&&e[1]&&e[5])","trusted touch reached "+selector);
+  else {
+   check("window.__testTouch.some(e=>e[0]==='pointerdown'&&e[1]&&e[5])","trusted touch reached "+selector);
+   check("window.__testTouch.some(e=>e[0]==='click'&&e[1]&&e[5])","trusted click dispatched to "+selector);
+  }
  }
  boolean scrollNative(AccessibilityNodeInfo n){
   if(n==null)return false;
@@ -53,7 +56,21 @@ public class RuntimeChecks extends Instrumentation {
  }
  void preferNativeListView()throws Exception{
   AccessibilityNodeInfo list=find(getUiAutomation().getRootInActiveWindow(),"List view");
-  if(list!=null){clickNative("List view");log("PICKER list view avoids clipped off-screen grid filename labels");}
+  if(list!=null){clickNative("List view");log("PICKER list view confirmed by Grid view toggle");}
+ }
+ void verifyNativeControl(String name)throws Exception{
+  if(!"Downloads".equals(name)&&!"List view".equals(name))return;
+  long deadline=System.currentTimeMillis()+12000;
+  while(System.currentTimeMillis()<deadline){
+   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+   if("Downloads".equals(name)&&isDocumentsPicker(root)&&find(root,"Downloads")!=null&&find(root,"Recent")==null){log("PICKER_NAVIGATION_CONFIRMED Downloads");return;}
+   if("List view".equals(name)&&isDocumentsPicker(root)&&find(root,"Grid view")!=null&&find(root,"List view")==null){log("PICKER_LAYOUT_CONFIRMED list");return;}
+   Thread.sleep(400);
+  }
+  AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+  capturePickerEvidence("action-"+name);
+  String tree=nativeTree(root,0);log("PICKER_ACTION_UNCONFIRMED "+name+" controls="+tree);
+  throw new Exception("Picker did not confirm "+name+"; controls="+tree);
  }
  String nativeTree(AccessibilityNodeInfo n,int depth){
   if(n==null||depth>20)return "";StringBuilder b=new StringBuilder();CharSequence t=n.getText(),d=n.getContentDescription();
@@ -120,13 +137,16 @@ public class RuntimeChecks extends Instrumentation {
      confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
     }
    }
-   if(confirm==null){log("PICKER_NO_OPEN_OR_SELECT_BUTTON "+name+" file="+nativeTree(root,0));return;}
+   if(confirm==null){String tree=nativeTree(root,0);log("PICKER_NO_OPEN_OR_SELECT_BUTTON "+name+" file="+tree);throw new Exception("Picker remained open after "+name+"; no Open/Select control; "+tree);}
   }
   AccessibilityNodeInfo button=confirm;while(button!=null&&!button.isClickable())button=button.getParent();
-  if(button==null||!button.isEnabled()){log("PICKER_CONFIRM_DISABLED "+name);return;}
+  if(button==null||!button.isEnabled()){log("PICKER_CONFIRM_DISABLED "+name);throw new Exception("Picker confirmation is disabled for "+name);}
   boolean clicked=button.performAction(AccessibilityNodeInfo.ACTION_CLICK);
   if(!clicked){Rect b=new Rect();button.getBoundsInScreen(b);if(!b.isEmpty()){long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,b.centerX(),b.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,b.centerX(),b.centerY(),0);clicked=getUiAutomation().injectInputEvent(d,true)&&getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();}}
-  if(clicked){Thread.sleep(1200);log("CLICK picker confirmation for "+name);}else log("PICKER_CONFIRM_TAP_FAILED "+name);
+  if(!clicked)throw new Exception("Picker confirmation tap failed for "+name);
+  Thread.sleep(1200);root=getUiAutomation().getRootInActiveWindow();pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
+  if(isDocumentsPicker(root)){String tree=nativeTree(root,0);capturePickerEvidence(name+"-confirm");log("PICKER_CONFIRM_DID_NOT_CLOSE "+name+" controls="+tree);throw new Exception("Picker confirmation did not close for "+name+"; "+tree);}
+  log("CLICK picker confirmation for "+name+" package="+pkg);
  }
  void clickNative(String name)throws Exception{
   long deadline=System.currentTimeMillis()+90000;int scrolls=0;
@@ -144,14 +164,14 @@ public class RuntimeChecks extends Instrumentation {
       Rect labelBounds=new Rect();n.getBoundsInScreen(labelBounds);
       if(injectNativeTap(labelBounds)){afterNativeFileClick(name);log("TOUCH native file label "+name);return;}
      }else if(target!=null && target.isEnabled() && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)){
-      afterNativeFileClick(name);log("CLICK accessible control "+name);return;
+      verifyNativeControl(name);afterNativeFileClick(name);log("CLICK accessible control "+name);return;
      }
      Rect tapBounds=new Rect();(target==null?n:target).getBoundsInScreen(tapBounds);
      if(!tapBounds.intersect(viewport)||tapBounds.isEmpty())tapBounds.set(bounds);
      long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,tapBounds.centerX(),tapBounds.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,tapBounds.centerX(),tapBounds.centerY(),0);
      boolean sent=getUiAutomation().injectInputEvent(d,true) && getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();
      if(!sent)throw new Exception("Native touch injection refused: "+name);
-     Thread.sleep(1000);afterNativeFileClick(name);log("CLICK "+name);return;
+     Thread.sleep(1000);verifyNativeControl(name);afterNativeFileClick(name);log("CLICK "+name);return;
     }
    }
    AccessibilityNodeInfo wait=find(root,"Wait");if(wait!=null){wait.performAction(AccessibilityNodeInfo.ACTION_CLICK);log("ENV System UI wait dialog dismissed");}

@@ -27,6 +27,16 @@ def capture(name):
         cmd(['adb','shell','uiautomator','dump','/sdcard/window.xml'],name+'-dump',20,False)
         cmd(['adb','pull','/sdcard/window.xml',str(out/(name+'.xml'))],name+'-xml',10,False)
     except Exception:pass
+def capture_picker_files(name):
+    remote='/sdcard/Android/data/io.github.himangshuraj.lecture/files'
+    try:
+        listing=cmd(['adb','shell','find',remote,'-maxdepth','1','-type','f','-name','picker-capture-*.png'],name+'-picker-files',15,False)
+        for source in listing.splitlines():
+            if source.startswith(remote+'/') and source.endswith('.png'):
+                filename=pathlib.PurePosixPath(source).name
+                cmd(['adb','pull',source,str(out/(name+'-'+filename))],name+'-'+filename[:-4],15,False)
+    except Exception as e:
+        (out/(name+'-picker-files-error.log')).write_text(str(e))
 try:
     assert cmd(['adb','shell','getprop','sys.boot_completed'],'boot').strip()=='1'
     assert cmd(['adb','shell','getprop','ro.build.version.sdk'],'sdk').strip()==str(expected_api)
@@ -47,6 +57,8 @@ try:
     for name,klass,marker,extras in checks:
         cmd(['adb','shell','am','force-stop','io.github.himangshurajg.lecture'],name+'-stop',10,False)
         cmd(['adb','shell','am','force-stop','com.google.android.documentsui'],name+'-picker-stop',10,False)
+        picker_dir='/sdcard/Android/data/io.github.himangshurajg.lecture/files'
+        cmd(['adb','shell','sh','-c','rm -f '+picker_dir+'/picker-capture-*.png'],name+'-picker-clean',10,False)
         start=time.monotonic()
         try:
             text=cmd(['adb','shell','am','instrument','-w']+extras+['io.github.himangshurajg.lecture.test/.'+klass],name,330)
@@ -55,7 +67,7 @@ try:
         except Exception as e:results.append({'check':name,'passed':False,'error':str(e)})
         capture(name)
         cmd(['adb','pull','/sdcard/Android/data/io.github.himangshurajg.lecture/files/web-tap.png',str(out/(name+'-web-tap.png'))],name+'-tap-capture',10,False)
-        cmd(['adb','pull','/sdcard/Android/data/io.github.himangshurajg.lecture/files/picker-capture-'+name+'.png',str(out/(name+'-picker.png'))],name+'-picker-capture',10,False)
+        capture_picker_files(name)
     # Verify native export contents, not just a successful Save action.
     text=cmd(['adb','shell','find','/sdcard/Download','-type','f'],'download-files',20)
     exports=[p for p in text.splitlines() if re.search(r'\.md(?: \(\d+\))?$',p)]
