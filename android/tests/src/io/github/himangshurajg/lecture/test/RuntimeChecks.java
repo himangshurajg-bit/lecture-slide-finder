@@ -56,7 +56,7 @@ public class RuntimeChecks extends Instrumentation {
   if(list!=null){clickNative("List view");log("PICKER list view avoids clipped off-screen grid filename labels");}
  }
  String nativeTree(AccessibilityNodeInfo n,int depth){
-  if(n==null||depth>8)return "";StringBuilder b=new StringBuilder();CharSequence t=n.getText(),d=n.getContentDescription();
+  if(n==null||depth>20)return "";StringBuilder b=new StringBuilder();CharSequence t=n.getText(),d=n.getContentDescription();
   if((t!=null&&!t.toString().isEmpty())||(d!=null&&!d.toString().isEmpty()))b.append("["+t+"|"+d+" clickable="+n.isClickable()+" enabled="+n.isEnabled()+" selected="+n.isSelected()+"] ");
   for(int i=0;i<n.getChildCount();i++)b.append(nativeTree(n.getChild(i),depth+1));return b.toString();
  }
@@ -86,22 +86,33 @@ public class RuntimeChecks extends Instrumentation {
   log("PICKER_REMAINS_AFTER_FILE_CLICK "+name+" controls="+nativeTree(root,0));
   AccessibilityNodeInfo confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
   if(confirm==null){
-   // Some older DocumentsUI builds don't deliver ACTION_CLICK on a filename's
-   // RecyclerView ancestor. Tap the actual visible filename through Android's
-   // input pipeline, then look again for a selection confirmation control.
-   AccessibilityNodeInfo selected=find(root,name);
-   if(selected!=null){
-    Rect labelBounds=new Rect();selected.getBoundsInScreen(labelBounds);boolean tapped=injectNativeTap(labelBounds);
+   // Recent DocumentsUI versions expose the filename inside a clickable
+   // item_root. Activating that row is more reliable than tapping the child
+   // TextView bounds (which can be clipped or inert in the system picker).
+   AccessibilityNodeInfo selected=find(root,name),row=selected;
+   while(row!=null&&!row.isClickable())row=row.getParent();
+   if(row!=null&&row.isEnabled()){
+    Rect rowBounds=new Rect();row.getBoundsInScreen(rowBounds);
+    boolean activated=row.performAction(AccessibilityNodeInfo.ACTION_CLICK);
     Thread.sleep(1200);root=getUiAutomation().getRootInActiveWindow();pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
-    log("PICKER_COORDINATE_FILE_TAP "+name+" tapped="+tapped+" package="+pkg);
+    log("PICKER_ROW_ACTION "+name+" activated="+activated+" bounds="+rowBounds+" package="+pkg);
     if(!isDocumentsPicker(root))return;
     confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
     if(confirm==null){
-     // If the picker exposes no action button, a second real touch emulates
-     // opening the now-selected row. Keep it on the exact filename bounds.
-     selected=find(root,name);labelBounds.setEmpty();if(selected!=null)selected.getBoundsInScreen(labelBounds);
-     boolean secondTap=injectNativeTap(labelBounds);Thread.sleep(1200);root=getUiAutomation().getRootInActiveWindow();pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
-     log("PICKER_SECOND_FILE_TAP "+name+" tapped="+secondTap+" package="+pkg);
+     selected=find(root,name);row=selected;while(row!=null&&!row.isClickable())row=row.getParent();
+     Rect rowTap=new Rect();if(row!=null)row.getBoundsInScreen(rowTap);
+     boolean tapped=injectNativeTap(rowTap);Thread.sleep(1200);root=getUiAutomation().getRootInActiveWindow();pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
+     log("PICKER_ROW_TOUCH "+name+" tapped="+tapped+" bounds="+rowTap+" package="+pkg);
+     if(!isDocumentsPicker(root))return;
+     confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
+    }
+   }
+   if(confirm==null){
+    // Fall back to the visible filename itself on older DocumentsUI variants.
+    selected=find(root,name);
+    if(selected!=null){Rect labelBounds=new Rect();selected.getBoundsInScreen(labelBounds);boolean tapped=injectNativeTap(labelBounds);
+     Thread.sleep(1200);root=getUiAutomation().getRootInActiveWindow();pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
+     log("PICKER_COORDINATE_FILE_TAP "+name+" tapped="+tapped+" package="+pkg);
      if(!isDocumentsPicker(root))return;
      confirm=find(root,"Open");if(confirm==null)confirm=find(root,"Select");
     }

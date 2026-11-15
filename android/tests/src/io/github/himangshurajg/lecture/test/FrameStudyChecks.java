@@ -2,6 +2,16 @@ package io.github.himangshurajg.lecture.test;
 import android.app.*;import android.content.*;import android.os.*;import android.webkit.*;import android.net.Uri;import android.media.*;import java.io.*;import java.lang.reflect.*;import java.util.concurrent.atomic.AtomicBoolean;import org.json.*;
 /** Original six-frame B-frame fixture; proves sequential output/PTS independently of gallery UI. */
 public final class FrameStudyChecks extends RuntimeChecks {
+ void awaitOcr(String name)throws Exception{
+  log("AWAIT "+name);long deadline=System.currentTimeMillis()+180000,nextLog=System.currentTimeMillis();
+  while(System.currentTimeMillis()<deadline){
+   if("true".equals(js("document.querySelector('#ocr-state').textContent.includes('Complete decoded-frame pass: 6')"))){log("PASS "+name);return;}
+   long now=System.currentTimeMillis();if(now>=nextLog){String status=js("JSON.stringify({state:document.querySelector('#ocr-state')?.textContent||'', checked:JSON.parse(localStorage.getItem('lecture-frame-study-v1')||'{}').checked||0, points:JSON.parse(localStorage.getItem('lecture-frame-study-v1')||'{}').points?.length||0})");log("OCR_PROGRESS "+status);nextLog=now+15000;}
+   Thread.sleep(1000);
+  }
+  String status=js("JSON.stringify({state:document.querySelector('#ocr-state')?.textContent||'', checked:JSON.parse(localStorage.getItem('lecture-frame-study-v1')||'{}').checked||0, points:JSON.parse(localStorage.getItem('lecture-frame-study-v1')||'{}').points?.length||0})");
+  throw new Exception("Timeout: "+name+"; "+status);
+ }
  @Override public void onStart(){Bundle result=new Bundle();Object decoder=null;try{
   File source=new File(getTargetContext().getCacheDir(),"frame-study.mp4");
   try(InputStream in=getContext().getAssets().open("frame-study.mp4");OutputStream out=new FileOutputStream(source)){byte[] b=new byte[65536];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}
@@ -15,7 +25,7 @@ public final class FrameStudyChecks extends RuntimeChecks {
   Intent i=new Intent().setClassName(getTargetContext(),"io.github.himangshurajg.lecture.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);activity=startActivitySync(i);Field f=activity.getClass().getDeclaredField("web");f.setAccessible(true);web=(WebView)f.get(activity);await("!!document.querySelector('#frames-start')","frame UI launch");js("localStorage.clear();location.reload()");Thread.sleep(2000);await("!!document.querySelector('#frames-start')","clean frame UI");
   tapWeb("[data-pick=video-file]");clickNative("Show roots");clickNative("Downloads");preferNativeListView();clickNative("frame-study.mp4");await("document.querySelector('#video').readyState>=2","native picked original frame fixture");
   js("document.querySelector('#all-frames').open=true;document.querySelector('#frames-start').click()");await("document.querySelectorAll('.gallery-frame').length===4","first four exact frames");js("document.querySelector('.gallery-frame').click()");check("document.querySelector('#exact-frame').open && document.querySelector('#exact-caption').textContent.includes('frame 1')","exact frame detail");js("document.querySelector('#exact-next').click()");check("document.querySelector('#exact-caption').textContent.includes('frame 2')","single frame stepping");js("document.querySelector('#close-frame').click();document.querySelector('#frames-next').click()");await("document.querySelectorAll('.gallery-frame').length===2 && document.querySelector('#gallery-state').textContent.includes('end of decoded')","remaining two frames and EOS");
-  js("document.querySelector('#ocr-language').value='eng+hin';window.confirm=()=>true;document.querySelector('#frames-scan').click()");await("document.querySelector('#ocr-state').textContent.includes('Complete decoded-frame pass: 6')","native all-six-frame offline OCR");
+  js("document.querySelector('#ocr-language').value='eng+hin';window.confirm=()=>true;document.querySelector('#frames-scan').click()");awaitOcr("native all-six-frame offline OCR");
   check("document.querySelector('#frame-points').textContent.includes('Mass and acceleration') && document.querySelector('#frame-points').textContent.includes('बल गति बदलता है')","actual English and Hindi visible content");
   check("JSON.parse(localStorage.getItem('lecture-frame-study-v1')).checked===6 && JSON.parse(localStorage.getItem('lecture-frame-study-v1')).complete","full coverage saved without fake frames");
   tapWeb("#frames-export");clickNative("Save");await("document.querySelector('#status').textContent.includes('Notes exported')","native frame-point export");
