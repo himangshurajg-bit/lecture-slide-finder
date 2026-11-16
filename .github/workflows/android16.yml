@@ -41,6 +41,7 @@ jobs:
         env:
           ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.2.12479018
           LECTURE_SIGNING_DIR: ${{ runner.temp }}/lecture-ci-signing
+          LECTURE_OCR_INIT_DIAGNOSTICS: '1'
         run: |
           mkdir -p android/runtime/ci-evidence
           trap 'cp /tmp/candidate-build.log android/runtime/ci-evidence/ 2>/dev/null || true' EXIT

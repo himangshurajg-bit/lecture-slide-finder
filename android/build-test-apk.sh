@@ -20,6 +20,11 @@ pnpm build
 OUT=android/build
 rm -rf "$OUT"; mkdir -p "$OUT/classes" "$OUT/dex" "$OUT/assets"
 cp -R dist/. "$OUT/assets/"
+# This opt-in patch touches only the generated CI candidate APK, never source/public assets.
+if [[ "${LECTURE_OCR_INIT_DIAGNOSTICS:-0}" == "1" ]]; then
+ [[ "${CI:-}" == "true" ]] || { echo 'OCR initialization diagnostics are CI-only.' >&2; exit 1; }
+ python3 android/ci/enable-ocr-init-diagnostics.py "$OUT/assets/ocr"
+fi
 mkdir -p "$OUT/assets/asr" "$OUT/assets/licenses" "$OUT/lib"
 cp android/asr-deps/vosk-model-small-*.zip "$OUT/assets/asr/"
 cp android/licenses/VOSK-APACHE-2.0.txt android/licenses/VOSK-MODELS-NOTICE.txt "$OUT/assets/licenses/"
