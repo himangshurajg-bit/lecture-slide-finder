@@ -75,8 +75,8 @@ export function installFrameStudy(hooks: Hooks) {
  async function getWorker(guard:number){if(worker)return worker;message('Preparing bundled offline OCR…');
   const base=new URL('ocr/',document.baseURI).href;
   let created:Worker;
-  try{created=await createWorker($<HTMLSelectElement>('ocr-language').value,1,{workerPath:base+'worker.min.js',corePath:base,langPath:base+'lang',gzip:false,workerBlobURL:false,cacheMethod:'none',logger:event=>{if(event.status)message(`Offline OCR: ${event.status}${typeof event.progress==='number'?` (${Math.round(event.progress*100)}%)`:''}`);},errorHandler:error=>{const text=`Offline OCR worker error: ${describeWorkerError(error)}`.slice(0,1200);console.error(text);message(text);}});}
-  catch(error){const text=`Offline OCR worker setup failed: ${describeWorkerError(error)}`.slice(0,1200);console.error(text);message(text);throw error;}
+  try{created=await createWorker($<HTMLSelectElement>('ocr-language').value,1,{workerPath:base+'worker.min.js',corePath:base,langPath:base+'lang',gzip:false,workerBlobURL:false,cacheMethod:'none',logger:event=>{if(guard===token&&event.status)message(`Offline OCR: ${event.status}${typeof event.progress==='number'?` (${Math.round(event.progress*100)}%)`:''}`);},errorHandler:error=>{if(guard!==token)return;const text=`Offline OCR worker error: ${describeWorkerError(error)}`.slice(0,1200);console.error(text);message(text);}});}
+  catch(error){if(guard===token){const text=`Offline OCR worker setup failed: ${describeWorkerError(error)}`.slice(0,1200);console.error(text);message(text);}throw error;}
   if(guard!==token){await created.terminate();throw new Error('Analysis cancelled.');}worker=created;return created;
  }
  async function recognize(frame:StudyFrame,guard:number){const ocr=await getWorker(guard);const result=await ocr.recognize(frame.image);if(guard!==token)throw new Error('Analysis cancelled.');addFrameText(study.points,frame,result.data.text,Math.max(0,Math.min(100,result.data.confidence)));if(!frame.manual)study.checked++;save();renderPoints();}

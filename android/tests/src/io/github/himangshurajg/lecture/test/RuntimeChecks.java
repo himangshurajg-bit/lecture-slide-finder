@@ -90,24 +90,17 @@ public class RuntimeChecks extends Instrumentation {
   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
   if(!isDocumentsPicker(root)||!rootsDrawerOpen(root))return;
   String selectedTitle=documentsPickerTitle(root);
-  // Back exits the picker on API 26/28 rather than merely closing its drawer.
-  // Toggle the picker toolbar's roots control, then require the selected
-  // directory and the picker activity to remain intact.
-  if(find(root,"Show roots")==null)
-   throw new Exception("DocumentsUI roots toolbar control unavailable while drawer open; controls="+nativeTree(root,0));
-  clickNative("Show roots");
-  long deadline=System.currentTimeMillis()+5000;
-  while(System.currentTimeMillis()<deadline){
-   root=getUiAutomation().getRootInActiveWindow();
-   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)){
-    String title=documentsPickerTitle(root);
-    if(selectedTitle!=null&&selectedTitle.equals(title)){log("PICKER_ROOTS_DRAWER_CLOSED title="+title);return;}
-    throw new Exception("DocumentsUI drawer closed but directory changed from "+selectedTitle+" to "+title+"; controls="+nativeTree(root,0));
-   }
-   Thread.sleep(200);
-  }
+  // The roots drawer covers its toolbar toggle. Back exits the picker on
+  // some legacy API levels, so reselect the current root from the drawer.
+  // Confirm the same picker directory remains active after the drawer closes.
+  if(selectedTitle==null||!isPickerRoot(selectedTitle)||!visiblePickerRoot(root,selectedTitle))
+   throw new Exception("DocumentsUI current root is not selectable in the open drawer; title="+selectedTitle+" controls="+nativeTree(root,0));
+  clickNative(selectedTitle);
   root=getUiAutomation().getRootInActiveWindow();
-  throw new Exception("DocumentsUI roots drawer stayed open after toolbar toggle; controls="+nativeTree(root,0));
+  String title=documentsPickerTitle(root);
+  if(!isDocumentsPicker(root)||rootsDrawerOpen(root)||!selectedTitle.equals(title))
+   throw new Exception("DocumentsUI drawer did not close on the selected root; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
+  log("PICKER_ROOTS_DRAWER_CLOSED title="+title);
  }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);
