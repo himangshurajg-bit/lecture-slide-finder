@@ -17,12 +17,12 @@ CORE_DIAGNOSTIC = (
     '(b.printErr||console.warn.bind(console));'
 )
 WORKER_RESET = "O=new l.TessBaseAPI,-1!==(b=O.Init"
-WORKER_RESET_DIAGNOSTIC = "O=new l.TessBaseAPI,r.g.__lectureOcrInitErrors=[],-1!==(b=O.Init"
+WORKER_RESET_DIAGNOSTIC = "O=new l.TessBaseAPI,self.__lectureOcrInitErrors=[],-1!==(b=O.Init"
 WORKER_FAILURE = 'r.reject("initialization failed");t.next=38;break'
 WORKER_FAILURE_DIAGNOSTIC = (
-    'r.reject("initialization failed"+(r.g.__lectureOcrInitErrors&&'
-    'r.g.__lectureOcrInitErrors.length?": "+'
-    'r.g.__lectureOcrInitErrors.slice(-8).join(" | "):""));'
+    'r.reject("initialization failed"+(self.__lectureOcrInitErrors&&'
+    'self.__lectureOcrInitErrors.length?": "+'
+    'self.__lectureOcrInitErrors.slice(-8).join(" | "):""));'
     't.next=38;break'
 )
 
