@@ -89,19 +89,25 @@ public class RuntimeChecks extends Instrumentation {
  void closePickerRootsDrawer()throws Exception{
   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
   if(!isDocumentsPicker(root)||!rootsDrawerOpen(root))return;
-  // The toolbar's Show roots action can be obscured by the open drawer on
-  // legacy and current DocumentsUI. Back dismisses the overlay without
-  // changing the selected source.
-  if(!getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK))
-   throw new Exception("Could not dismiss DocumentsUI roots drawer with Back; controls="+nativeTree(root,0));
+  String selectedTitle=documentsPickerTitle(root);
+  // Back exits the picker on API 26/28 rather than merely closing its drawer.
+  // Toggle the picker toolbar's roots control, then require the selected
+  // directory and the picker activity to remain intact.
+  if(find(root,"Show roots")==null)
+   throw new Exception("DocumentsUI roots toolbar control unavailable while drawer open; controls="+nativeTree(root,0));
+  clickNative("Show roots");
   long deadline=System.currentTimeMillis()+5000;
   while(System.currentTimeMillis()<deadline){
    root=getUiAutomation().getRootInActiveWindow();
-   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)){log("PICKER_ROOTS_DRAWER_CLOSED title="+documentsPickerTitle(root));return;}
+   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)){
+    String title=documentsPickerTitle(root);
+    if(selectedTitle!=null&&selectedTitle.equals(title)){log("PICKER_ROOTS_DRAWER_CLOSED title="+title);return;}
+    throw new Exception("DocumentsUI drawer closed but directory changed from "+selectedTitle+" to "+title+"; controls="+nativeTree(root,0));
+   }
    Thread.sleep(200);
   }
   root=getUiAutomation().getRootInActiveWindow();
-  throw new Exception("DocumentsUI roots drawer stayed open after Back; controls="+nativeTree(root,0));
+  throw new Exception("DocumentsUI roots drawer stayed open after toolbar toggle; controls="+nativeTree(root,0));
  }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);
