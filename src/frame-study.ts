@@ -75,7 +75,7 @@ export function installFrameStudy(hooks: Hooks) {
  async function getWorker(guard:number){if(worker)return worker;message('Preparing bundled offline OCR…');
   const base=new URL('ocr/',document.baseURI).href;
   let created:Worker;
-  try{created=await createWorker($<HTMLSelectElement>('ocr-language').value,1,{workerPath:base+'worker.min.js',corePath:base,langPath:base+'lang',gzip:false,workerBlobURL:false,cacheMethod:'none',logger:event=>{if(guard===token&&event.status)message(`Offline OCR: ${event.status}${typeof event.progress==='number'?` (${Math.round(event.progress*100)}%)`:''}`);},errorHandler:error=>{if(guard!==token)return;const text=`Offline OCR worker error: ${describeWorkerError(error)}`.slice(0,1200);console.error(text);message(text);}});}
+  try{created=await createWorker($<HTMLSelectElement>('ocr-language').value,1,{workerPath:base+'worker.min.js',corePath:native?base+'tesseract-core-lstm.wasm.js':base,langPath:base+'lang',gzip:false,workerBlobURL:false,cacheMethod:'none',logger:event=>{if(guard===token&&event.status)message(`Offline OCR: ${event.status}${typeof event.progress==='number'?` (${Math.round(event.progress*100)}%)`:''}`);},errorHandler:error=>{if(guard!==token)return;const text=`Offline OCR worker error: ${describeWorkerError(error)}`.slice(0,1200);console.error(text);message(text);}});}
   catch(error){if(guard===token){const text=`Offline OCR worker setup failed: ${describeWorkerError(error)}`.slice(0,1200);console.error(text);message(text);}throw error;}
   if(guard!==token){await created.terminate();throw new Error('Analysis cancelled.');}worker=created;return created;
  }

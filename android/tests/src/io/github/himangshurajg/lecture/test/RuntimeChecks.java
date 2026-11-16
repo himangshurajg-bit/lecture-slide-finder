@@ -90,17 +90,25 @@ public class RuntimeChecks extends Instrumentation {
   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
   if(!isDocumentsPicker(root)||!rootsDrawerOpen(root))return;
   String selectedTitle=documentsPickerTitle(root);
-  // The roots drawer covers its toolbar toggle. Back exits the picker on
-  // some legacy API levels, so reselect the current root from the drawer.
-  // Confirm the same picker directory remains active after the drawer closes.
-  if(selectedTitle==null||!isPickerRoot(selectedTitle)||!visiblePickerRoot(root,selectedTitle))
-   throw new Exception("DocumentsUI current root is not selectable in the open drawer; title="+selectedTitle+" controls="+nativeTree(root,0));
-  clickNative(selectedTitle);
-  root=getUiAutomation().getRootInActiveWindow();
-  String title=documentsPickerTitle(root);
-  if(!isDocumentsPicker(root)||rootsDrawerOpen(root)||!selectedTitle.equals(title))
-   throw new Exception("DocumentsUI drawer did not close on the selected root; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
-  log("PICKER_ROOTS_DRAWER_CLOSED title="+title);
+  if(selectedTitle==null||!isPickerRoot(selectedTitle))
+   throw new Exception("DocumentsUI current root is unknown in the open drawer; title="+selectedTitle+" controls="+nativeTree(root,0));
+  // Tapping the already-selected root is a no-op on some DocumentsUI versions.
+  // Tap the visible toolbar toggle through the native input pipeline and verify
+  // the drawer closes while the same picker directory remains active.
+  AccessibilityNodeInfo toggle=find(root,"Show roots");
+  if(toggle==null)throw new Exception("DocumentsUI roots toggle is missing; controls="+nativeTree(root,0));
+  Rect bounds=new Rect();toggle.getBoundsInScreen(bounds);
+  boolean tapped=injectNativeTap(bounds);
+  long deadline=System.currentTimeMillis()+8000;
+  while(System.currentTimeMillis()<deadline){
+   root=getUiAutomation().getRootInActiveWindow();
+   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
+    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=touch tapped="+tapped);return;
+   }
+   Thread.sleep(250);
+  }
+  root=getUiAutomation().getRootInActiveWindow();String title=documentsPickerTitle(root);
+  throw new Exception("DocumentsUI roots drawer remains open after toolbar toggle; expected="+selectedTitle+" actual="+title+" tapped="+tapped+" controls="+nativeTree(root,0));
  }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);
