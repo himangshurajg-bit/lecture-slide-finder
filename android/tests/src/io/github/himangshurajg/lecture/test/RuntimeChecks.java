@@ -124,25 +124,45 @@ public class RuntimeChecks extends Instrumentation {
     throw new Exception("DocumentsUI changed unexpectedly after Show roots action; expected="+selectedTitle+" controls="+nativeTree(root,0));
    Thread.sleep(200);
   }
-  // Some API 26 DocumentsUI builds expose the drawer toggle with bounds
-  // underneath the drawer and ignore both a scrim tap and its accessibility
-  // click. Try Back only as a final fallback, then verify that it closed the
-  // drawer without leaving the picker or changing the selected directory.
-  boolean backAction=getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK);
-  log("PICKER_ROOTS_BACK_ACTION title="+selectedTitle+" invoked="+backAction);
-  deadline=System.currentTimeMillis()+2500;
-  while(System.currentTimeMillis()<deadline){
-   root=getUiAutomation().getRootInActiveWindow();
-   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
-    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=back");return;
+  // On API 26 the accessibility click on Show roots can report success even
+  // though its toolbar bounds sit beneath the drawer. Re-select the already
+  // active root row as a non-destructive close fallback; never send global
+  // Back here, since on this build it can dismiss the entire file picker.
+  AccessibilityNodeInfo selectedRoot=findLast(root,selectedTitle);
+  if(selectedRoot!=null&&inPickerWindow(root,selectedRoot)){
+   Rect rootBounds=new Rect();selectedRoot.getBoundsInScreen(rootBounds);
+   AccessibilityNodeInfo row=selectedRoot;
+   while(row!=null&&!row.isClickable())row=row.getParent();
+   boolean rowAction=row!=null&&row.isEnabled()&&row.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+   log("PICKER_ROOTS_SELECTED_ROW_ACTION title="+selectedTitle+" clicked="+rowAction+" bounds="+rootBounds);
+   deadline=System.currentTimeMillis()+2500;
+   while(System.currentTimeMillis()<deadline){
+    root=getUiAutomation().getRootInActiveWindow();
+    if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
+     log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=selected-root-action");return;
+    }
+    if(!isDocumentsPicker(root)||!selectedTitle.equals(documentsPickerTitle(root)))
+     throw new Exception("DocumentsUI changed unexpectedly after selected-root action; expected="+selectedTitle+" controls="+nativeTree(root,0));
+    Thread.sleep(200);
    }
-   if(!isDocumentsPicker(root)||!selectedTitle.equals(documentsPickerTitle(root)))
-    throw new Exception("DocumentsUI changed unexpectedly after drawer Back action; expected="+selectedTitle+" controls="+nativeTree(root,0));
-   Thread.sleep(200);
+   root=getUiAutomation().getRootInActiveWindow();
+   if(isDocumentsPicker(root)&&rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))&&injectNativeTap(rootBounds)){
+    log("PICKER_ROOTS_SELECTED_ROW_TOUCHED title="+selectedTitle+" bounds="+rootBounds);
+    deadline=System.currentTimeMillis()+2500;
+    while(System.currentTimeMillis()<deadline){
+     root=getUiAutomation().getRootInActiveWindow();
+     if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
+      log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=selected-root-touch");return;
+     }
+     if(!isDocumentsPicker(root)||!selectedTitle.equals(documentsPickerTitle(root)))
+      throw new Exception("DocumentsUI changed unexpectedly after selected-root touch; expected="+selectedTitle+" controls="+nativeTree(root,0));
+     Thread.sleep(200);
+    }
+   }
   }
   root=getUiAutomation().getRootInActiveWindow();String title=documentsPickerTitle(root);
   capturePickerEvidence("drawer-close");
-  throw new Exception("DocumentsUI roots drawer did not close; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
+  throw new Exception("DocumentsUI roots drawer did not close without dismissing the picker; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
  }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);
