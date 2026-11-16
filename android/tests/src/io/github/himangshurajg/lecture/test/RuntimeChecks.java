@@ -92,40 +92,29 @@ public class RuntimeChecks extends Instrumentation {
   String selectedTitle=documentsPickerTitle(root);
   if(selectedTitle==null||!isPickerRoot(selectedTitle))
    throw new Exception("DocumentsUI current root is unknown in the open drawer; title="+selectedTitle+" controls="+nativeTree(root,0));
-  // Back exits DocumentsUI entirely on older APIs. The accessible Show roots
-  // toolbar button is the explicit drawer toggle; verify the drawer actually
-  // closes before proceeding, and use a real tap only if its action is inert.
-  AccessibilityNodeInfo toggle=find(root,"Show roots"),action=toggle;
-  while(action!=null&&!action.isClickable())action=action.getParent();
-  if(action==null||!action.isEnabled())
-   throw new Exception("DocumentsUI Show roots toggle is unavailable; controls="+nativeTree(root,0));
-  Rect toggleBounds=new Rect();action.getBoundsInScreen(toggleBounds);
-  boolean clicked=action.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-  log("PICKER_ROOTS_TOGGLE_ACTION title="+selectedTitle+" clicked="+clicked+" bounds="+toggleBounds);
-  long deadline=System.currentTimeMillis()+(clicked?3000:0);
+  // The Show roots accessibility node is mis-bounded on older DocumentsUI: its
+  // reported bounds cover the drawer header, not the actual toggle. Tap the
+  // dimmed scrim at the far edge of the picker window instead; the drawer
+  // consumes that touch and closes without activating the obscured content.
+  Rect window=new Rect();root.getBoundsInScreen(window);
+  if(window.isEmpty())throw new Exception("DocumentsUI picker window has no usable bounds; controls="+nativeTree(root,0));
+  int x=window.right-2,y=window.centerY();
+  Rect scrimTap=new Rect(x-1,y-1,x+1,y+1);
+  if(!injectNativeTap(scrimTap))throw new Exception("DocumentsUI drawer scrim touch refused at "+x+","+y);
+  log("PICKER_ROOTS_SCRIM_TOUCHED title="+selectedTitle+" point="+x+","+y+" window="+window);
+  long deadline=System.currentTimeMillis()+8000;
   while(System.currentTimeMillis()<deadline){
    root=getUiAutomation().getRootInActiveWindow();
    if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
-    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=show-roots-action");return;
+    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=scrim");return;
    }
-   Thread.sleep(200);
-  }
-  root=getUiAutomation().getRootInActiveWindow();
-  if(!isDocumentsPicker(root)||!rootsDrawerOpen(root)||!selectedTitle.equals(documentsPickerTitle(root)))
-   throw new Exception("DocumentsUI changed unexpectedly after Show roots action; expected="+selectedTitle+" controls="+nativeTree(root,0));
-  if(!injectNativeTap(toggleBounds))throw new Exception("Native Show roots touch refused");
-  log("PICKER_ROOTS_TOGGLE_TOUCHED title="+selectedTitle+" bounds="+toggleBounds);
-  deadline=System.currentTimeMillis()+8000;
-  while(System.currentTimeMillis()<deadline){
-   root=getUiAutomation().getRootInActiveWindow();
-   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
-    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=show-roots-touch");return;
-   }
+   if(!isDocumentsPicker(root)||!selectedTitle.equals(documentsPickerTitle(root)))
+    throw new Exception("DocumentsUI changed unexpectedly after drawer scrim touch; expected="+selectedTitle+" controls="+nativeTree(root,0));
    Thread.sleep(200);
   }
   root=getUiAutomation().getRootInActiveWindow();String title=documentsPickerTitle(root);
-  capturePickerEvidence("drawer-close-show-roots");
-  throw new Exception("DocumentsUI roots drawer did not close after Show roots toggle; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
+  capturePickerEvidence("drawer-close-scrim");
+  throw new Exception("DocumentsUI roots drawer did not close after scrim touch; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
  }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);
