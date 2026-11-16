@@ -92,20 +92,27 @@ public class RuntimeChecks extends Instrumentation {
   String selectedTitle=documentsPickerTitle(root);
   if(selectedTitle==null||!isPickerRoot(selectedTitle))
    throw new Exception("DocumentsUI current root is unknown in the open drawer; title="+selectedTitle+" controls="+nativeTree(root,0));
-  // Send the actual Back key through the input system. The global accessibility
-  // action and scrim hit test can be swallowed by DocumentsUI on API 26/28.
-  sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
+  // Instrumentation.sendKeyDownUpSync injects under the app UID and is denied
+  // when DocumentsUI owns the window. Inject the Back key through UiAutomation,
+  // which is also the supported cross-app path used for native picker taps.
+  long keyTime=SystemClock.uptimeMillis();
+  android.view.KeyEvent backDown=new android.view.KeyEvent(keyTime,keyTime,android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_BACK,0);
+  android.view.KeyEvent backUp=new android.view.KeyEvent(keyTime,keyTime+50,android.view.KeyEvent.ACTION_UP,android.view.KeyEvent.KEYCODE_BACK,0);
+  boolean downSent=getUiAutomation().injectInputEvent(backDown,true);
+  boolean upSent=getUiAutomation().injectInputEvent(backUp,true);
+  log("PICKER_BACK_KEY_INJECTED down="+downSent+" up="+upSent);
+  if(!downSent||!upSent)throw new Exception("UiAutomation could not inject Back key into DocumentsUI");
   long deadline=System.currentTimeMillis()+4000;
   while(System.currentTimeMillis()<deadline){
    root=getUiAutomation().getRootInActiveWindow();
    if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
-    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=back-key");return;
+    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=ui-automation-back-key");return;
    }
    Thread.sleep(200);
   }
   root=getUiAutomation().getRootInActiveWindow();String title=documentsPickerTitle(root);
   capturePickerEvidence("drawer-close-back-key");
-  throw new Exception("DocumentsUI roots drawer remains open after Back key; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
+  throw new Exception("DocumentsUI roots drawer remains open after UiAutomation Back key; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
  }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);
