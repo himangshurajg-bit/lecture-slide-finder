@@ -92,17 +92,15 @@ public class RuntimeChecks extends Instrumentation {
   String selectedTitle=documentsPickerTitle(root);
   if(selectedTitle==null||!isPickerRoot(selectedTitle))
    throw new Exception("DocumentsUI current root is unknown in the open drawer; title="+selectedTitle+" controls="+nativeTree(root,0));
-  // The Show roots accessibility node is mis-bounded on older DocumentsUI: its
-  // reported bounds cover the drawer header, not the actual toggle. Tap the
-  // dimmed scrim at the far edge of the picker window instead; the drawer
-  // consumes that touch and closes without activating the obscured content.
   Rect window=new Rect();root.getBoundsInScreen(window);
   if(window.isEmpty())throw new Exception("DocumentsUI picker window has no usable bounds; controls="+nativeTree(root,0));
-  int x=window.right-2,y=window.centerY();
+  // Keep the tap well inside dimmed content. At the physical window edge,
+  // older API 26 emulators route the touch to the system gesture area.
+  int x=window.left+(window.width()*9)/10,y=window.centerY();
   Rect scrimTap=new Rect(x-1,y-1,x+1,y+1);
   if(!injectNativeTap(scrimTap))throw new Exception("DocumentsUI drawer scrim touch refused at "+x+","+y);
   log("PICKER_ROOTS_SCRIM_TOUCHED title="+selectedTitle+" point="+x+","+y+" window="+window);
-  long deadline=System.currentTimeMillis()+8000;
+  long deadline=System.currentTimeMillis()+1800;
   while(System.currentTimeMillis()<deadline){
    root=getUiAutomation().getRootInActiveWindow();
    if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
@@ -112,9 +110,39 @@ public class RuntimeChecks extends Instrumentation {
     throw new Exception("DocumentsUI changed unexpectedly after drawer scrim touch; expected="+selectedTitle+" controls="+nativeTree(root,0));
    Thread.sleep(200);
   }
+  root=getUiAutomation().getRootInActiveWindow();
+  AccessibilityNodeInfo toggle=find(root,"Show roots");
+  boolean toggleAction=toggle!=null&&toggle.isEnabled()&&toggle.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+  log("PICKER_ROOTS_TOGGLE_ACTION title="+selectedTitle+" clicked="+toggleAction);
+  deadline=System.currentTimeMillis()+5000;
+  while(System.currentTimeMillis()<deadline){
+   root=getUiAutomation().getRootInActiveWindow();
+   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
+    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=toggle-action");return;
+   }
+   if(!isDocumentsPicker(root)||!selectedTitle.equals(documentsPickerTitle(root)))
+    throw new Exception("DocumentsUI changed unexpectedly after Show roots action; expected="+selectedTitle+" controls="+nativeTree(root,0));
+   Thread.sleep(200);
+  }
+  // Some API 26 DocumentsUI builds expose the drawer toggle with bounds
+  // underneath the drawer and ignore both a scrim tap and its accessibility
+  // click. Try Back only as a final fallback, then verify that it closed the
+  // drawer without leaving the picker or changing the selected directory.
+  boolean backAction=getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK);
+  log("PICKER_ROOTS_BACK_ACTION title="+selectedTitle+" invoked="+backAction);
+  deadline=System.currentTimeMillis()+2500;
+  while(System.currentTimeMillis()<deadline){
+   root=getUiAutomation().getRootInActiveWindow();
+   if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
+    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=back");return;
+   }
+   if(!isDocumentsPicker(root)||!selectedTitle.equals(documentsPickerTitle(root)))
+    throw new Exception("DocumentsUI changed unexpectedly after drawer Back action; expected="+selectedTitle+" controls="+nativeTree(root,0));
+   Thread.sleep(200);
+  }
   root=getUiAutomation().getRootInActiveWindow();String title=documentsPickerTitle(root);
-  capturePickerEvidence("drawer-close-scrim");
-  throw new Exception("DocumentsUI roots drawer did not close after scrim touch; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
+  capturePickerEvidence("drawer-close");
+  throw new Exception("DocumentsUI roots drawer did not close; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
  }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);
@@ -132,10 +160,10 @@ public class RuntimeChecks extends Instrumentation {
   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();String pkg=root==null||root.getPackageName()==null?"":root.getPackageName().toString();
   capturePickerEvidence("picker-not-active");throw new Exception("DocumentsUI did not become active; package="+pkg+" controls="+nativeTree(root,0));
  }
- void waitForPickerRootChoice(String... labels)throws Exception{
+ String waitForPickerRootChoice(String... labels)throws Exception{
   long deadline=System.currentTimeMillis()+12000;
   while(System.currentTimeMillis()<deadline){AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
-   if(isDocumentsPicker(root)&&rootsDrawerOpen(root))for(String label:labels)if(visiblePickerRoot(root,label)){log("PICKER_ROOT_VISIBLE "+label);return;}
+   if(isDocumentsPicker(root)&&rootsDrawerOpen(root))for(String label:labels)if(visiblePickerRoot(root,label)){log("PICKER_ROOT_VISIBLE "+label);return label;}
    Thread.sleep(300);
   }
   AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();throw new Exception("DocumentsUI roots drawer did not expose a usable source; controls="+nativeTree(root,0));
@@ -160,21 +188,20 @@ public class RuntimeChecks extends Instrumentation {
   waitForDocumentsPicker();AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
   if(!rootsDrawerOpen(root)&&visiblePickerText(root,fixture)){log("PICKER_FIXTURE_VISIBLE "+fixture+" title="+documentsPickerTitle(root)+" already-open=true");return;}
   if(!rootsDrawerOpen(root)){AccessibilityNodeInfo show=find(root,"Show roots");if(show==null)throw new Exception("DocumentsUI is active but Show roots is unavailable; controls="+nativeTree(root,0));clickNative("Show roots");}
-  waitForPickerRootChoice("Downloads","Download","Videos","Recent");root=getUiAutomation().getRootInActiveWindow();
+  // The frame-study fixture is seeded in Download; Recent can be empty while
+  // MediaStore is indexing it. Keep that check on the deterministic file root.
+  String entry="frame-study.mp4".equals(fixture)
+    ?waitForPickerRootChoice("Downloads","Download")
+    :waitForPickerRootChoice("Downloads","Download","Videos","Recent");
+  root=getUiAutomation().getRootInActiveWindow();
   String title=documentsPickerTitle(root);
   // If the drawer is open over the requested directory, close it rather than
   // tapping the same root again. Rows behind the drawer are not a valid route.
   if("Downloads".equals(title)||"Download".equals(title)){
    closePickerRootsDrawer();waitForPickerFixture(fixture);log("PICKER_NAVIGATION_CONFIRMED "+title+" fixture="+fixture);return;
   }
-  String entry=null;
-  // Choose a root from the drawer itself, not matching text in the obscured
-  // page. Prefer seeded Downloads; Videos and Recent are picker fallbacks.
-  if(visiblePickerRoot(root,"Downloads"))entry="Downloads";
-  else if(visiblePickerRoot(root,"Download"))entry="Download";
-  else if(fixture.endsWith(".mp4")&&visiblePickerRoot(root,"Videos"))entry="Videos";
-  else if(visiblePickerRoot(root,"Recent"))entry="Recent";
-  if(entry==null)throw new Exception("DocumentsUI has no visible Videos, Recent, or Downloads source for "+fixture+"; controls="+nativeTree(root,0));
+  // Use the exact root chosen from the snapshot that proved it visible; a new
+  // tree can briefly omit Downloads while the drawer is animating.
   clickNative(entry);
   long deadline=System.currentTimeMillis()+12000;
   while(System.currentTimeMillis()<deadline){
