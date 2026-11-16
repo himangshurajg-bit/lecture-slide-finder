@@ -367,6 +367,7 @@ public class RuntimeChecks extends Instrumentation {
       // Some older DocumentsUI rows expose a clickable parent even though
       // their label itself is inert. Try that row action first, and accept it
       // only after the toolbar title confirms the requested directory.
+      String titleBeforeAction=documentsPickerTitle(root);
       Rect rowBounds=new Rect();n.getBoundsInScreen(rowBounds);
       boolean rowAction=target!=null&&target.isEnabled()&&target.performAction(AccessibilityNodeInfo.ACTION_CLICK);
       log("PICKER_ROOT_ROW_ACTION "+name+" clicked="+rowAction+" bounds="+rowBounds);
@@ -383,11 +384,17 @@ public class RuntimeChecks extends Instrumentation {
        Thread.sleep(250);
       }
       AccessibilityNodeInfo afterAction=getUiAutomation().getRootInActiveWindow();
-      if(!isDocumentsPicker(afterAction)||!rootsDrawerOpen(afterAction)||!name.equals(documentsPickerTitle(afterAction))){
-       if(isDocumentsPicker(afterAction)&&!rootsDrawerOpen(afterAction)&&name.equals(documentsPickerTitle(afterAction))){log("PICKER_ROOT_ROW_CONFIRMED "+name+" via=action bounds="+rowBounds);return;}
+      if(isDocumentsPicker(afterAction)&&!rootsDrawerOpen(afterAction)&&name.equals(documentsPickerTitle(afterAction))){log("PICKER_ROOT_ROW_CONFIRMED "+name+" via=action bounds="+rowBounds);return;}
+      if(!isDocumentsPicker(afterAction)||!rootsDrawerOpen(afterAction)||!titleBeforeAction.equals(documentsPickerTitle(afterAction))||!visiblePickerRoot(afterAction,name))
        throw new Exception("DocumentsUI changed unexpectedly after root action for "+name+"; controls="+nativeTree(afterAction,0));
-      }
-      if(!injectNativeTap(rowBounds))throw new Exception("Native drawer-row touch refused: "+name);
+      // Some newer picker trees expose the drawer label as a non-clickable
+      // TextView. If the click left the same drawer/root in place, tap that
+      // still-visible exact row; never use Back or a guessed row position.
+      AccessibilityNodeInfo freshEntry=findLast(afterAction,name);
+      Rect freshBounds=new Rect();if(freshEntry!=null)freshEntry.getBoundsInScreen(freshBounds);
+      if(!visiblePickerRoot(afterAction,name)||freshEntry==null||freshBounds.isEmpty()||!injectNativeTap(freshBounds))
+       throw new Exception("Native drawer-row touch refused: "+name+" controls="+nativeTree(afterAction,0));
+      rowBounds.set(freshBounds);
       navDeadline=System.currentTimeMillis()+8000;
       while(System.currentTimeMillis()<navDeadline){
        AccessibilityNodeInfo current=getUiAutomation().getRootInActiveWindow();
