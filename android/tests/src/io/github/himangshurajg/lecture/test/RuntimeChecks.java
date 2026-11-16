@@ -92,27 +92,26 @@ public class RuntimeChecks extends Instrumentation {
   String selectedTitle=documentsPickerTitle(root);
   if(selectedTitle==null||!isPickerRoot(selectedTitle))
    throw new Exception("DocumentsUI current root is unknown in the open drawer; title="+selectedTitle+" controls="+nativeTree(root,0));
-  // Instrumentation.sendKeyDownUpSync injects under the app UID and is denied
-  // when DocumentsUI owns the window. Inject the Back key through UiAutomation,
-  // which is also the supported cross-app path used for native picker taps.
-  long keyTime=SystemClock.uptimeMillis();
-  android.view.KeyEvent backDown=new android.view.KeyEvent(keyTime,keyTime,android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_BACK,0);
-  android.view.KeyEvent backUp=new android.view.KeyEvent(keyTime,keyTime+50,android.view.KeyEvent.ACTION_UP,android.view.KeyEvent.KEYCODE_BACK,0);
-  boolean downSent=getUiAutomation().injectInputEvent(backDown,true);
-  boolean upSent=getUiAutomation().injectInputEvent(backUp,true);
-  log("PICKER_BACK_KEY_INJECTED down="+downSent+" up="+upSent);
-  if(!downSent||!upSent)throw new Exception("UiAutomation could not inject Back key into DocumentsUI");
-  long deadline=System.currentTimeMillis()+4000;
+  // Back exits DocumentsUI entirely on older APIs instead of dismissing its
+  // roots drawer. Touch the selected visible root row to return to that folder;
+  // this is the same real row interaction used when choosing Downloads.
+  AccessibilityNodeInfo selectedRow=findLast(root,selectedTitle);
+  if(selectedRow==null||!visiblePickerRoot(root,selectedTitle))
+   throw new Exception("Selected picker root row is not visible in open drawer: "+selectedTitle+" controls="+nativeTree(root,0));
+  Rect rowBounds=new Rect();selectedRow.getBoundsInScreen(rowBounds);
+  if(!injectNativeTap(rowBounds))throw new Exception("Native selected-root touch refused: "+selectedTitle);
+  log("PICKER_SELECTED_ROOT_TOUCHED "+selectedTitle+" bounds="+rowBounds);
+  long deadline=System.currentTimeMillis()+8000;
   while(System.currentTimeMillis()<deadline){
    root=getUiAutomation().getRootInActiveWindow();
    if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
-    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=ui-automation-back-key");return;
+    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=selected-root-touch");return;
    }
    Thread.sleep(200);
   }
   root=getUiAutomation().getRootInActiveWindow();String title=documentsPickerTitle(root);
-  capturePickerEvidence("drawer-close-back-key");
-  throw new Exception("DocumentsUI roots drawer remains open after UiAutomation Back key; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
+  capturePickerEvidence("drawer-close-selected-root");
+  throw new Exception("DocumentsUI roots drawer did not close after touching selected root; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
  }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);
