@@ -92,23 +92,24 @@ public class RuntimeChecks extends Instrumentation {
   String selectedTitle=documentsPickerTitle(root);
   if(selectedTitle==null||!isPickerRoot(selectedTitle))
    throw new Exception("DocumentsUI current root is unknown in the open drawer; title="+selectedTitle+" controls="+nativeTree(root,0));
-  // Tapping the already-selected root is a no-op on some DocumentsUI versions.
-  // Tap the visible toolbar toggle through the native input pipeline and verify
-  // the drawer closes while the same picker directory remains active.
-  AccessibilityNodeInfo toggle=find(root,"Show roots");
-  if(toggle==null)throw new Exception("DocumentsUI roots toggle is missing; controls="+nativeTree(root,0));
-  Rect bounds=new Rect();toggle.getBoundsInScreen(bounds);
-  boolean tapped=injectNativeTap(bounds);
+  // While the drawer is open, some DocumentsUI versions report the hidden
+  // toolbar toggle's bounds over the drawer header. Tap the visible dimmed
+  // scrim at the far edge instead, then verify the same directory remains.
+  Rect window=new Rect();root.getBoundsInScreen(window);
+  if(window.isEmpty()||window.width()<200)throw new Exception("DocumentsUI window bounds are invalid; bounds="+window);
+  int x=window.right-4,y=window.centerY();
+  Rect scrim=new Rect(x-1,y-1,x+1,y+1);
+  boolean tapped=injectNativeTap(scrim);
   long deadline=System.currentTimeMillis()+8000;
   while(System.currentTimeMillis()<deadline){
    root=getUiAutomation().getRootInActiveWindow();
    if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
-    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=touch tapped="+tapped);return;
+    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=scrim tapped="+tapped);return;
    }
    Thread.sleep(250);
   }
   root=getUiAutomation().getRootInActiveWindow();String title=documentsPickerTitle(root);
-  throw new Exception("DocumentsUI roots drawer remains open after toolbar toggle; expected="+selectedTitle+" actual="+title+" tapped="+tapped+" controls="+nativeTree(root,0));
+  throw new Exception("DocumentsUI roots drawer remains open after outside-scrim tap; expected="+selectedTitle+" actual="+title+" tapped="+tapped+" controls="+nativeTree(root,0));
  }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);

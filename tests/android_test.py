@@ -75,8 +75,10 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertIn('isPickerRoot(name)&&isDocumentsPicker(root)&&rootsDrawerOpen(root)',source)
         self.assertIn('void closePickerRootsDrawer()',source)
         drawer=source.split('void closePickerRootsDrawer()')[1].split('boolean inPickerWindow')[0]
-        self.assertIn('find(root,"Show roots")',drawer)
-        self.assertIn('injectNativeTap(bounds)',drawer)
+        self.assertIn('root.getBoundsInScreen(window)',drawer)
+        self.assertIn('Rect scrim=new Rect(x-1,y-1,x+1,y+1)',drawer)
+        self.assertIn('injectNativeTap(scrim)',drawer)
+        self.assertNotIn('find(root,"Show roots")',drawer)
         self.assertIn('selectedTitle.equals(documentsPickerTitle(root))',drawer)
         self.assertIn('!rootsDrawerOpen(root)',drawer)
         self.assertNotIn('clickNative(selectedTitle)',drawer)
