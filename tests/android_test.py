@@ -75,8 +75,9 @@ class AndroidBoundaryTests(unittest.TestCase):
         self.assertIn('isPickerRoot(name)&&isDocumentsPicker(root)&&rootsDrawerOpen(root)',source)
         self.assertIn('void closePickerRootsDrawer()',source)
         drawer=source.split('void closePickerRootsDrawer()')[1].split('boolean inPickerWindow')[0]
-        self.assertIn('sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)',drawer)
-        self.assertIn('via=back-key',drawer)
+        self.assertIn('getUiAutomation().injectInputEvent(backDown,true)',drawer)
+        self.assertIn('getUiAutomation().injectInputEvent(backUp,true)',drawer)
+        self.assertIn('via=ui-automation-back-key',drawer)
         self.assertNotIn('Rect scrim=',drawer)
         self.assertNotIn('find(root,"Show roots")',drawer)
         self.assertIn('selectedTitle.equals(documentsPickerTitle(root))',drawer)
