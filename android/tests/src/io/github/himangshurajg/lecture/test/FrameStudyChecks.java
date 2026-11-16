@@ -3,10 +3,23 @@ import android.app.*;import android.content.*;import android.os.*;import android
 /** Original six-frame B-frame fixture; proves sequential output/PTS independently of gallery UI. */
 public final class FrameStudyChecks extends RuntimeChecks {
  String ocrProgress()throws Exception{return js("JSON.stringify((function(){var e=document.querySelector('#ocr-state'),d=JSON.parse(localStorage.getItem('lecture-frame-study-v1')||'{}');return {state:e?e.textContent:'',checked:d.checked||0,points:d.points?d.points.length:0};})())");}
+ void awaitOcrProbe(String language)throws Exception{
+  js("document.querySelector('#ocr-language').value='"+language+"';document.querySelector('#frames-current').click()");
+  long deadline=System.currentTimeMillis()+55000;
+  while(System.currentTimeMillis()<deadline){
+   String state=js("document.querySelector('#ocr-state').textContent");
+   if((state.contains("Current displayed picture read")||state.contains("Offline OCR failed")) && "true".equals(js("!document.querySelector('#frames-current').disabled"))){
+    log("OCR_LANGUAGE_PROBE language="+language+" state="+ocrProgress());return;
+   }
+   Thread.sleep(500);
+  }
+  throw new Exception("OCR diagnostic probe timed out for "+language+"; "+ocrProgress());
+ }
  void awaitOcr(String name)throws Exception{
   log("AWAIT "+name);long deadline=System.currentTimeMillis()+180000,nextLog=System.currentTimeMillis();
   while(System.currentTimeMillis()<deadline){
    if("true".equals(js("document.querySelector('#ocr-state').textContent.includes('Complete decoded-frame pass: 6')"))){log("PASS "+name);return;}
+   if("true".equals(js("document.querySelector('#ocr-state').textContent.includes('Offline OCR failed')")))throw new Exception("OCR diagnostic failure: "+ocrProgress());
    long now=System.currentTimeMillis();if(now>=nextLog){log("OCR_PROGRESS "+ocrProgress());nextLog=now+15000;}
    Thread.sleep(1000);
   }
@@ -26,6 +39,8 @@ public final class FrameStudyChecks extends RuntimeChecks {
   Intent i=new Intent().setClassName(getTargetContext(),"io.github.himangshurajg.lecture.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);activity=startActivitySync(i);Field f=activity.getClass().getDeclaredField("web");f.setAccessible(true);web=(WebView)f.get(activity);await("!!document.querySelector('#frames-start')","frame UI launch");js("localStorage.clear();location.reload()");Thread.sleep(2000);await("!!document.querySelector('#frames-start')","clean frame UI");
   tapWeb("[data-pick=video-file]");navigateToDownloads("frame-study.mp4");preferNativeListView();clickNative("frame-study.mp4");await("document.querySelector('#video').readyState>=2","native picked original frame fixture");
   js("document.querySelector('#all-frames').open=true;document.querySelector('#frames-start').click()");await("document.querySelectorAll('.gallery-frame').length===4","first four exact frames");js("document.querySelector('.gallery-frame').click()");check("document.querySelector('#exact-frame').open && document.querySelector('#exact-caption').textContent.includes('frame 1')","exact frame detail");js("document.querySelector('#exact-next').click()");check("document.querySelector('#exact-caption').textContent.includes('frame 2')","single frame stepping");js("document.querySelector('#close-frame').click();document.querySelector('#frames-next').click()");await("document.querySelectorAll('.gallery-frame').length===2 && document.querySelector('#gallery-state').textContent.includes('end of decoded')","remaining two frames and EOS");
+  js("document.querySelector('#video').pause();document.querySelector('#video').currentTime=0.1");await("document.querySelector('#video').readyState>=2 && Math.abs(document.querySelector('#video').currentTime-0.1)<0.05","stable first decoded picture for OCR probes");
+  awaitOcrProbe("eng");awaitOcrProbe("hin");awaitOcrProbe("eng+hin");
   js("document.querySelector('#ocr-language').value='eng+hin';window.confirm=()=>true;document.querySelector('#frames-scan').click()");awaitOcr("native all-six-frame offline OCR");
   check("document.querySelector('#frame-points').textContent.includes('Mass and acceleration') && document.querySelector('#frame-points').textContent.includes('बल गति बदलता है')","actual English and Hindi visible content");
   check("JSON.parse(localStorage.getItem('lecture-frame-study-v1')).checked===6 && JSON.parse(localStorage.getItem('lecture-frame-study-v1')).complete","full coverage saved without fake frames");

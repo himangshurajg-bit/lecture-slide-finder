@@ -20,7 +20,7 @@ export function installFrameStudy(hooks: Hooks) {
  const $=<T extends HTMLElement>(id:string)=>section.querySelector<T>('#'+id)!;
  let study: FrameStudy={version:1,source:'',name:'Lecture',points:[],decoded:0,checked:0,complete:false,manual:0};
  let pointOffset=0,exactIndex=0;
- let pages: StudyFrame[][]=[],pageOffset=0,pageIndex=-1,done=false,busy=false,scanning=false,worker:Worker|null=null,token=0,requestId=0;
+ let pages: StudyFrame[][]=[],pageOffset=0,pageIndex=-1,done=false,busy=false,scanning=false,worker:Worker|null=null,workerLanguage:string|null=null,workerReadyAt=0,workerInitMs=0,token=0,requestId=0;
  let pending: {id:number;resolve:(v:FrameBatch)=>void;reject:(e:Error)=>void;timer:number}|null=null;
  type FrameBatch={frames: StudyFrame[]; decoded:number;duration:number;done:boolean;error?:string};
  const message=(s:string)=>{$('ocr-state').textContent=s;};
@@ -72,16 +72,36 @@ export function installFrameStudy(hooks: Hooks) {
   }
   return String(error);
  }
- async function getWorker(guard:number){if(worker)return worker;message('Preparing bundled offline OCR…');
-  const base=new URL('ocr/',document.baseURI).href;
+ async function getWorker(guard:number){
+  const language=$<HTMLSelectElement>('ocr-language').value;
+  if(worker&&workerLanguage===language)return worker;
+  if(worker){const old=worker,previousLanguage=workerLanguage;worker=null;workerLanguage=null;await old.terminate();console.info('[frame-ocr] worker replaced for language change',{from:previousLanguage,to:language});}
+  message('Preparing bundled offline OCR…');
+  const base=new URL('ocr/',document.baseURI).href,started=performance.now();
   let created:Worker;
-  try{created=await createWorker($<HTMLSelectElement>('ocr-language').value,1,{workerPath:base+'worker.min.js',corePath:native?base+'tesseract-core-lstm.wasm.js':base,langPath:base+'lang',gzip:false,workerBlobURL:false,cacheMethod:'none',logger:event=>{if(guard===token&&event.status)message(`Offline OCR: ${event.status}${typeof event.progress==='number'?` (${Math.round(event.progress*100)}%)`:''}`);},errorHandler:error=>{if(guard!==token)return;const text=`Offline OCR worker error: ${describeWorkerError(error)}`.slice(0,1200);console.error(text);message(text);}});}
-  catch(error){if(guard===token){const text=`Offline OCR worker setup failed: ${describeWorkerError(error)}`.slice(0,1200);console.error(text);message(text);}throw error;}
-  if(guard!==token){await created.terminate();throw new Error('Analysis cancelled.');}worker=created;return created;
+  const core=base+'tesseract-core-lstm.wasm.js';
+  try{created=await createWorker(language,1,{workerPath:base+'worker.min.js',corePath:native?core:base,langPath:base+'lang',gzip:false,workerBlobURL:false,cacheMethod:'none',logger:event=>{if(guard===token&&event.status){const detail=`${event.status}${typeof event.progress==='number'?` (${Math.round(event.progress*100)}%)`:''}`;console.info('[frame-ocr] worker progress',detail);message(`Offline OCR: ${detail}`);}},errorHandler:error=>{if(guard!==token)return;const text=`Offline OCR worker error: ${describeWorkerError(error)} · language=${language} · core=${native?'lstm-only':'auto'} · ua=${navigator.userAgent}`.slice(0,1200);console.error('[frame-ocr] worker error',text);message(text);}});}
+  catch(error){if(guard===token){const text=`Offline OCR worker setup failed: ${describeWorkerError(error)} · language=${language} · core=${native?'lstm-only':'auto'} · ua=${navigator.userAgent}`.slice(0,1200);console.error('[frame-ocr] setup failed',text);message(text);}throw error;}
+  if(guard!==token){await created.terminate();throw new Error('Analysis cancelled.');}workerReadyAt=performance.now();workerInitMs=Math.round(workerReadyAt-started);worker=created;workerLanguage=language;console.info('[frame-ocr] worker ready',{language,core:native?'tesseract-core-lstm.wasm.js':'auto',readyMs:Math.round(workerReadyAt-started),native,ua:navigator.userAgent});return created;
  }
- async function recognize(frame:StudyFrame,guard:number){const ocr=await getWorker(guard);const result=await ocr.recognize(frame.image);if(guard!==token)throw new Error('Analysis cancelled.');addFrameText(study.points,frame,result.data.text,Math.max(0,Math.min(100,result.data.confidence)));if(!frame.manual)study.checked++;save();renderPoints();}
- async function stop(note='Analysis stopped. Completed points are kept; coverage is partial.') {token++;scanning=false;pending?.reject(new Error(note));if(pending)clearTimeout(pending.timer);pending=null;closeDecoder();const old=worker;worker=null;if(old)void old.terminate();setBusy(false);message(note);save();}
- async function finish(){closeDecoder();const old=worker;worker=null;if(old)await old.terminate();setBusy(false);}
+ async function recognize(frame:StudyFrame,guard:number){
+  const language=$<HTMLSelectElement>('ocr-language').value,inputChars=frame.image.length,started=performance.now();
+  const input=`frame=${frame.index+1} pts=${frame.time.toFixed(3)}s imageChars=${inputChars} language=${language}`;
+  console.info('[frame-ocr] recognize start',input);
+  message(`Reading visible text · ${input}`);
+  try{
+   const ocr=await getWorker(guard);let timer=0;
+   const result=await Promise.race([ocr.recognize(frame.image),new Promise<never>((_,reject)=>{timer=window.setTimeout(()=>reject(new Error('no worker response within 45s')),45000);})]).finally(()=>window.clearTimeout(timer));
+   if(guard!==token)throw new Error('Analysis cancelled.');
+   console.info('[frame-ocr] recognize complete',{...{frame:frame.index+1,time:frame.time,elapsedMs:Math.round(performance.now()-started),textLength:result.data.text.length,confidence:result.data.confidence}});
+   addFrameText(study.points,frame,result.data.text,Math.max(0,Math.min(100,result.data.confidence)));if(!frame.manual)study.checked++;save();renderPoints();
+  }catch(error){
+   const detail=`Offline OCR failed · ${input} · workerReadyMs=${workerReadyAt?workerInitMs:'not-ready'} · ${describeWorkerError(error)}`.slice(0,1200);
+   console.error('[frame-ocr] recognize failed',detail);message(detail);throw new Error(detail);
+  }
+ }
+ async function stop(note='Analysis stopped. Completed points are kept; coverage is partial.') {token++;scanning=false;pending?.reject(new Error(note));if(pending)clearTimeout(pending.timer);pending=null;closeDecoder();const old=worker;worker=null;workerLanguage=null;if(old)void old.terminate();setBusy(false);message(note);save();}
+ async function finish(){closeDecoder();const old=worker;worker=null;workerLanguage=null;if(old)await old.terminate();setBusy(false);}
  function ready(){if(hooks.asrBusy()){message('Wait for transcription to finish first.');return false;}if(!hooks.source().url){message('Open a local lecture video first.');return false;}return true;}
  $('frames-start').onclick=async()=>{if(!ready()||busy)return;const guard=++token;pages=[];pageIndex=-1;pageOffset=0;done=false;setBusy(true);try{addPage(await bridge('reset'));}catch(e){if(guard===token)$('gallery-state').textContent=(e as Error).message;}finally{if(guard===token)setBusy(false);}};
  $('frames-next').onclick=async()=>{if(busy)return;if(pageIndex<pages.length-1){pageIndex++;renderGallery();setBusy(false);return;}const guard=token;setBusy(true);try{addPage(await bridge('next'));}catch(e){if(guard===token)$('gallery-state').textContent=(e as Error).message;}finally{if(guard===token)setBusy(false);}};

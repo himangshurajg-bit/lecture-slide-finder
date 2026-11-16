@@ -92,24 +92,20 @@ public class RuntimeChecks extends Instrumentation {
   String selectedTitle=documentsPickerTitle(root);
   if(selectedTitle==null||!isPickerRoot(selectedTitle))
    throw new Exception("DocumentsUI current root is unknown in the open drawer; title="+selectedTitle+" controls="+nativeTree(root,0));
-  // While the drawer is open, some DocumentsUI versions report the hidden
-  // toolbar toggle's bounds over the drawer header. Tap the visible dimmed
-  // scrim at the far edge instead, then verify the same directory remains.
-  Rect window=new Rect();root.getBoundsInScreen(window);
-  if(window.isEmpty()||window.width()<200)throw new Exception("DocumentsUI window bounds are invalid; bounds="+window);
-  int x=window.right-4,y=window.centerY();
-  Rect scrim=new Rect(x-1,y-1,x+1,y+1);
-  boolean tapped=injectNativeTap(scrim);
-  long deadline=System.currentTimeMillis()+8000;
+  // Send the actual Back key through the input system. The global accessibility
+  // action and scrim hit test can be swallowed by DocumentsUI on API 26/28.
+  sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
+  long deadline=System.currentTimeMillis()+4000;
   while(System.currentTimeMillis()<deadline){
    root=getUiAutomation().getRootInActiveWindow();
    if(isDocumentsPicker(root)&&!rootsDrawerOpen(root)&&selectedTitle.equals(documentsPickerTitle(root))){
-    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=scrim tapped="+tapped);return;
+    log("PICKER_ROOTS_DRAWER_CLOSED title="+selectedTitle+" via=back-key");return;
    }
-   Thread.sleep(250);
+   Thread.sleep(200);
   }
   root=getUiAutomation().getRootInActiveWindow();String title=documentsPickerTitle(root);
-  throw new Exception("DocumentsUI roots drawer remains open after outside-scrim tap; expected="+selectedTitle+" actual="+title+" tapped="+tapped+" controls="+nativeTree(root,0));
+  capturePickerEvidence("drawer-close-back-key");
+  throw new Exception("DocumentsUI roots drawer remains open after Back key; expected="+selectedTitle+" actual="+title+" controls="+nativeTree(root,0));
  }
  boolean inPickerWindow(AccessibilityNodeInfo root,AccessibilityNodeInfo node){
   if(root==null||node==null)return false;Rect window=new Rect(),bounds=new Rect();root.getBoundsInScreen(window);node.getBoundsInScreen(bounds);
@@ -311,15 +307,33 @@ public class RuntimeChecks extends Instrumentation {
      if(fileItem){
       Rect labelBounds=new Rect();n.getBoundsInScreen(labelBounds);
       if(injectNativeTap(labelBounds)){afterNativeFileClick(name);log("TOUCH native file label "+name);return;}
+     }else if(pickerRootItem){
+      // ACTION_CLICK can report success for the obscured toolbar label on old
+      // DocumentsUI. A real touch on the drawer's own visible row is required.
+      Rect rowBounds=new Rect();n.getBoundsInScreen(rowBounds);
+      if(!injectNativeTap(rowBounds))throw new Exception("Native drawer-row touch refused: "+name);
+      long navDeadline=System.currentTimeMillis()+8000;
+      while(System.currentTimeMillis()<navDeadline){
+       AccessibilityNodeInfo current=getUiAutomation().getRootInActiveWindow();
+       if(isDocumentsPicker(current)&&name.equals(documentsPickerTitle(current))){
+        if(rootsDrawerOpen(current))closePickerRootsDrawer();
+        current=getUiAutomation().getRootInActiveWindow();
+        if(isDocumentsPicker(current)&&!rootsDrawerOpen(current)&&name.equals(documentsPickerTitle(current))){
+         log("PICKER_ROOT_ROW_CONFIRMED "+name+" via=touch bounds="+rowBounds);return;
+        }
+       }
+       Thread.sleep(250);
+      }
+      throw new Exception("DocumentsUI did not confirm drawer root after real row touch: "+name+" controls="+nativeTree(getUiAutomation().getRootInActiveWindow(),0));
      }else if(target!=null && target.isEnabled() && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)){
-      if(!pickerRootItem)verifyNativeControl(name);afterNativeFileClick(name);log("CLICK accessible control "+name);return;
+      verifyNativeControl(name);afterNativeFileClick(name);log("CLICK accessible control "+name);return;
      }
      Rect tapBounds=new Rect();(target==null?n:target).getBoundsInScreen(tapBounds);
      if(!tapBounds.intersect(viewport)||tapBounds.isEmpty())tapBounds.set(bounds);
      long t=SystemClock.uptimeMillis();android.view.MotionEvent d=android.view.MotionEvent.obtain(t,t,0,tapBounds.centerX(),tapBounds.centerY(),0),u=android.view.MotionEvent.obtain(t,t+80,1,tapBounds.centerX(),tapBounds.centerY(),0);
      boolean sent=getUiAutomation().injectInputEvent(d,true) && getUiAutomation().injectInputEvent(u,true);d.recycle();u.recycle();
      if(!sent)throw new Exception("Native touch injection refused: "+name);
-     Thread.sleep(1000);if(!pickerRootItem)verifyNativeControl(name);afterNativeFileClick(name);log("CLICK "+name);return;
+     Thread.sleep(1000);verifyNativeControl(name);afterNativeFileClick(name);log("CLICK "+name);return;
     }
    }
    AccessibilityNodeInfo wait=find(root,"Wait");if(wait!=null){wait.performAction(AccessibilityNodeInfo.ACTION_CLICK);log("ENV System UI wait dialog dismissed");}
